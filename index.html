@@ -9,7 +9,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   
-  <!-- ⭐ [0.00초 화면 격리 엔진] 학생 QR 접속 시 교사용 화면을 0.00초 만에 원천 차단 -->
+  <!-- ⭐ [0.00초 화면 격리] 학생 QR 접속 시 교사용 화면 0.00초 원천 차단 -->
   <script>
     (function() {
       const params = new URLSearchParams(window.location.search);
@@ -24,21 +24,19 @@
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     body { font-family: 'Pretendard', sans-serif; }
     
-    /* 🛡️ [절대 차단 규칙] 학생 접속 시 교사용 대시보드는 0.00초도 보이지 않음 */
     .is-student-page #admin-view-container { display: none !important; }
     .is-student-page #student-view-container { display: flex !important; }
 
-    /* 교사 접속 시 학생 폼 차단 */
     html:not(.is-student-page) #student-view-container { display: none !important; }
     html:not(.is-student-page) #admin-view-container { display: block !important; }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 relative">
 
-  <!-- ================= 🔔 3초 자동 소멸 토스트 팝업 컨테이너 ================= -->
+  <!-- ================= 🔔 3초 자동 소멸 토스트 팝업 ================= -->
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- ================= [1. 학생 전용 모드 화면 (QR 접속 시 단독 출력)] ================= -->
+  <!-- ================= [1. 학생 전용 모드 화면 (?mode=student)] ================= -->
   <div id="student-view-container" class="min-h-screen items-center justify-center p-4">
     <div class="w-full max-w-md bg-white p-6 sm:p-8 rounded-3xl border-2 border-slate-200 shadow-2xl space-y-5">
       
@@ -118,7 +116,7 @@
     </div>
   </div>
 
-  <!-- ================= [2. 관리자 전체 대시보드 화면 (교사 전용)] ================= -->
+  <!-- ================= [2. 관리자 전체 대시보드 화면 (교사용)] ================= -->
   <div id="admin-view-container">
     <header class="bg-[#0F172A] text-white px-6 py-4 shadow-md">
       <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
@@ -227,6 +225,7 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <div class="lg:col-span-4 space-y-6">
+          <!-- QR 추출기 -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div class="flex items-center gap-2 text-blue-600 font-bold text-sm">
               <i data-lucide="qr-code" class="w-4 h-4"></i> 2. 반별 고유 QR 링크 코드 추출기
@@ -254,6 +253,7 @@
             </div>
           </div>
 
+          <!-- 교사 대리 입력 폼 -->
           <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div class="flex items-center justify-between border-b pb-3 border-slate-100">
               <div class="flex items-center gap-2 font-bold text-slate-800 text-base">
@@ -306,6 +306,7 @@
         </div>
 
         <div class="lg:col-span-8 space-y-6">
+          <!-- 차트 1: 반별 모니터링 타일 -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <div class="flex justify-between items-center">
               <h2 class="text-sm font-bold text-blue-700 flex items-center gap-1.5">
@@ -323,6 +324,7 @@
             <div id="class-tiles-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5"></div>
           </div>
 
+          <!-- 차트 2: 상세 학생 목록 타일 -->
           <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
               <div>
@@ -330,7 +332,7 @@
                   <span>차트 2: 상세 학생 목록</span>
                   <span id="current-filter-desc" class="text-xs text-blue-600 font-bold">(전체 상태 / 전체 반 출력 중)</span>
                 </h3>
-                <p class="text-[11px] text-slate-400 mt-0.5">※ 각 학생 타일을 클릭하면 상세 점검 내역을 확인할 수 있습니다.</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">※ 각 학생 타일을 클릭하면 상세 점검 내역 확인 및 [수리완료] 처리가 가능합니다.</p>
               </div>
               <div class="flex items-center gap-2">
                 <button onclick="downloadExcel()" class="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
@@ -341,7 +343,8 @@
 
             <div class="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
               <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-blue-500 bg-blue-50 inline-block"></span> 미제출 (파란 테두리)</span>
-              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-red-500 bg-red-50 inline-block"></span> 이상보고 / 특이사항 (빨간 테두리)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-red-500 bg-red-50 inline-block"></span> 이상보고 / 미수리 (빨간 테두리)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-purple-500 bg-purple-50 inline-block"></span> 수리완료 (보라 테두리)</span>
               <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-slate-200 bg-white inline-block"></span> 정상 (기본 테두리)</span>
             </div>
 
@@ -352,7 +355,7 @@
     </main>
   </div>
 
-  <!-- 상세 점검 내역 팝업 모달 -->
+  <!-- ⭐ [상세 점검 내역 팝업 모달 + 수리완료 버튼 탑재] -->
   <div id="detail-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
       <div class="flex justify-between items-center border-b pb-3">
@@ -380,11 +383,16 @@
         </div>
         <div class="text-[11px] text-slate-400 text-right" id="modal-timestamp">제출일시: -</div>
       </div>
+
+      <!-- ⭐ [수리완료 액션 버튼 영역] -->
+      <div id="modal-repair-action-box" class="pt-2">
+      </div>
+
       <button onclick="closeDetailModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs transition">확인 및 닫기</button>
     </div>
   </div>
 
-  <!-- ================= [3. JavaScript 엔진] ================= -->
+  <!-- ================= [3. JavaScript 통신 & 수리완료 엔진] ================= -->
   <script>
     // ⚠️ 구글 웹앱 URL을 꼭 여기에 넣으세요!
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjQ6ERljPsRoe4-Gi7OrEF6gMm0N8REthsmn4v_2oWdOJ3UlxXEEAmhngDYTR2FCSv/exec";
@@ -397,6 +405,10 @@
     let adminBoundClass = 5;
     let lastSubmittedData = null;
     let currentExportList = [];
+    let currentModalStudent = null;
+
+    // ⭐ [수리완료 영구 보관 세트]
+    let repairedSet = new Set();
 
     let state = {
       students: [],
@@ -423,23 +435,38 @@
       }, 3000);
     }
 
+    // 수리완료 상태 저장 및 불러오기 (학교별 분리 저장)
+    function loadRepairedStatus() {
+      try {
+        const saved = localStorage.getItem('repaired_' + activeSchool);
+        repairedSet = saved ? new Set(JSON.parse(saved)) : new Set();
+      } catch(e) {
+        repairedSet = new Set();
+      }
+    }
+
+    function saveRepairedStatus() {
+      try {
+        localStorage.setItem('repaired_' + activeSchool, JSON.stringify(Array.from(repairedSet)));
+      } catch(e){}
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-      setupStudentFormDirect(); // 학생 폼 즉시 세팅
+      setupStudentFormDirect();
       
       const urlParams = new URLSearchParams(window.location.search);
       const isStudent = (urlParams.get('mode') === 'student');
 
       if (!isStudent) {
         await initSchoolsList();
+        loadRepairedStatus();
         fetchData();
       } else {
-        // 학생 모드는 명단 검증을 위해 백그라운드로 명단만 조용히 로드
         fetchData();
       }
     });
 
-    // ⭐ [학생 폼 즉시 세팅] 대기 시간 없이 0.00초 만에 뱃지와 정보 세팅
     function setupStudentFormDirect() {
       const urlParams = new URLSearchParams(window.location.search);
       const isStudent = (urlParams.get('mode') === 'student');
@@ -460,6 +487,7 @@
           const selectEl = document.getElementById('select-active-school');
           selectEl.innerHTML = data.schools.map(sch => `<option value="${sch}">${sch}</option>`).join('');
           activeSchool = data.schools[0];
+          loadRepairedStatus();
           syncGradeClassSelection();
         }
       } catch(e) {
@@ -471,6 +499,7 @@
       activeSchool = document.getElementById('select-active-school').value;
       selectedClass = null;
       selectedFilters.clear();
+      loadRepairedStatus();
       syncGradeClassSelection();
       fetchData();
       showToast(`🏫 [${activeSchool}] 데이터로 전환되었습니다.`);
@@ -525,6 +554,8 @@
       try {
         await fetch(`${GAS_API_URL}?action=reset&school=${encodeURIComponent(activeSchool)}`);
         state.submissions = [];
+        repairedSet.clear();
+        saveRepairedStatus();
         renderDashboard();
         fetchData();
         showToast(`✅ [${activeSchool}] 점검이 초기화되었습니다.`);
@@ -721,6 +752,9 @@
       let submittedCount = 0, lostPad = 0, lostPen = 0, brokenPad = 0, brokenPen = 0, noteCount = 0;
 
       targetStudents.forEach(stu => {
+        const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
+        const isRepaired = repairedSet.has(stuKey);
+
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
           Number(s.classNum) === Number(stu.classNum) && 
@@ -730,11 +764,14 @@
         const status = checkStudentStatus(sub);
         if (status.isSubmitted) {
           submittedCount++;
-          if (status.lostTablet) lostPad++;
-          if (status.lostPen) lostPen++;
-          if (status.brokenTablet) brokenPad++;
-          if (status.brokenPen) brokenPen++;
-          if (status.hasNote) noteCount++;
+          // 수리완료가 안 된 미해결 건수만 집계
+          if (!isRepaired) {
+            if (status.lostTablet) lostPad++;
+            if (status.lostPen) lostPen++;
+            if (status.brokenTablet) brokenPad++;
+            if (status.brokenPen) brokenPen++;
+            if (status.hasNote) noteCount++;
+          }
         }
       });
 
@@ -827,6 +864,7 @@
       });
     }
 
+    // ⭐ [차트 2: 학생 타일 모니터링 - 수리완료 시 필터 자동 제외 및 보라색 표시]
     function renderStudentTiles(targetStudents) {
       const grid = document.getElementById('student-tiles-grid');
       grid.innerHTML = '';
@@ -835,6 +873,9 @@
       if (selectedClass) list = list.filter(s => Number(s.classNum) === Number(selectedClass));
 
       list = list.filter(stu => {
+        const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
+        const isRepaired = repairedSet.has(stuKey);
+
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
           Number(s.classNum) === Number(stu.classNum) && 
@@ -844,12 +885,18 @@
         if (selectedFilters.size === 0) return true;
 
         const status = checkStudentStatus(sub);
+
+        // ⭐ 수리완료된 학생은 분실, 파손, 특이소견 필터에서 자동 제외!
+        if (isRepaired && (selectedFilters.has('lost') || selectedFilters.has('broken') || selectedFilters.has('note'))) {
+          return false;
+        }
+
         let match = false;
         if (selectedFilters.has('submitted') && status.isSubmitted) match = true;
         if (selectedFilters.has('missing') && !status.isSubmitted) match = true;
-        if (selectedFilters.has('lost') && status.isLost) match = true;
-        if (selectedFilters.has('broken') && status.isBroken) match = true;
-        if (selectedFilters.has('note') && status.hasNote) match = true;
+        if (selectedFilters.has('lost') && status.isLost && !isRepaired) match = true;
+        if (selectedFilters.has('broken') && status.isBroken && !isRepaired) match = true;
+        if (selectedFilters.has('note') && status.hasNote && !isRepaired) match = true;
 
         return match;
       });
@@ -878,6 +925,9 @@
       }
 
       list.forEach((stu, idx) => {
+        const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
+        const isRepaired = repairedSet.has(stuKey);
+
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
           Number(s.classNum) === Number(stu.classNum) && 
@@ -894,14 +944,20 @@
         if (!status.isSubmitted) {
           secondLineHtml = `<span class="text-blue-600 font-bold text-[11px]">미제출</span>`;
           cardStyle = `border-2 border-blue-500 bg-blue-50/40 hover:bg-blue-100/50`;
+        } else if (isRepaired) {
+          // 🟣 수리완료: 보라색 테두리
+          secondLineHtml = `<span class="text-purple-700 font-black text-[11px] flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> 수리완료</span>`;
+          cardStyle = `border-2 border-purple-500 bg-purple-50/50 ring-1 ring-purple-300 hover:bg-purple-100/60`;
         } else {
           if (status.isIssue || status.hasNote) {
+            // 🔴 이상보고 / 미수리: 빨간 테두리
             let issueText = status.issues.join(', ');
             if (!issueText && status.hasNote) issueText = '특이사항 기재';
 
             secondLineHtml = `<span class="text-red-600 font-bold text-[11px] truncate block" title="${issueText}">${issueText}</span>`;
             cardStyle = `border-2 border-red-500 bg-red-50/50 ring-1 ring-red-300 hover:bg-red-100/60`;
           } else {
+            // 🟢 정상: 기본 테두리
             secondLineHtml = `<span class="text-emerald-600 font-bold text-[11px]">정상</span>`;
             cardStyle = `border-2 border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/30`;
           }
@@ -909,12 +965,13 @@
 
         let thirdLineNoteHtml = '';
         if (status.hasNote) {
-          thirdLineNoteHtml = `<div class="text-[10px] text-purple-900 font-bold truncate bg-purple-100/80 px-1.5 py-0.5 rounded border border-purple-200 mt-1" title="소견: ${sub.note}">📝 ${sub.note}</div>`;
+          const strikeClass = isRepaired ? 'line-through text-slate-400' : 'text-purple-900';
+          thirdLineNoteHtml = `<div class="text-[10px] font-bold truncate bg-purple-100/80 px-1.5 py-0.5 rounded border border-purple-200 mt-1 ${strikeClass}" title="소견: ${sub.note}">📝 ${sub.note}</div>`;
         }
 
         const tile = document.createElement('div');
         tile.className = `p-2.5 rounded-xl cursor-pointer shadow-sm transition-all duration-150 flex flex-col justify-between min-h-[82px] ${cardStyle}`;
-        tile.onclick = () => openDetailModal(stu, sub, studentId);
+        tile.onclick = () => openDetailModal(stu, sub, studentId, stuKey, isRepaired);
 
         tile.innerHTML = `
           <div>
@@ -927,8 +984,13 @@
       });
     }
 
-    function openDetailModal(stu, sub, studentId) {
+    // ⭐ [상세 팝업 모달 + 수리완료 토글 버튼]
+    function openDetailModal(stu, sub, studentId, stuKey, isRepaired) {
+      currentModalStudent = { stu, sub, studentId, stuKey, isRepaired };
+
       document.getElementById('modal-student-title').innerText = `${studentId} ${stu.name} (${activeSchool} ${stu.grade}학년 ${stu.classNum}반 ${stu.num}번)`;
+      const repairActionBox = document.getElementById('modal-repair-action-box');
+      repairActionBox.innerHTML = '';
 
       if (!sub) {
         document.getElementById('modal-submit-status').innerHTML = `<span class="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">미제출</span>`;
@@ -939,9 +1001,15 @@
         document.getElementById('modal-timestamp').innerText = '제출일시: 미제출';
       } else {
         const status = checkStudentStatus(sub);
-        const statusBadge = (status.isIssue || status.hasNote)
-          ? `<span class="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-200">이상/소견보고</span>`
-          : `<span class="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">정상 제출</span>`;
+        
+        let statusBadge = '';
+        if (isRepaired) {
+          statusBadge = `<span class="text-purple-700 font-bold bg-purple-50 px-2 py-0.5 rounded border border-purple-300">수리완료됨</span>`;
+        } else if (status.isIssue || status.hasNote) {
+          statusBadge = `<span class="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-200">이상/소견보고 (미수리)</span>`;
+        } else {
+          statusBadge = `<span class="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">정상 제출</span>`;
+        }
 
         document.getElementById('modal-submit-status').innerHTML = statusBadge;
         document.getElementById('modal-tablet-status').innerHTML = !status.lostTablet && !status.brokenTablet
@@ -959,14 +1027,44 @@
           : "bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-600 font-medium whitespace-pre-wrap min-h-[50px]";
 
         document.getElementById('modal-timestamp').innerText = `제출일시: ${sub.timestamp || '-'}`;
+
+        // ⭐ 이상보고 또는 소견이 있는 학생일 경우 수리완료 버튼 표시!
+        if (status.isIssue || status.hasNote || isRepaired) {
+          const btnHtml = isRepaired
+            ? `<button onclick="toggleModalRepair()" class="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 수리완료 취소 (다시 이상보고로 복구)
+               </button>`
+            : `<button onclick="toggleModalRepair()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 🔧 이 기기 [수리/처리 완료]로 변경
+               </button>`;
+          repairActionBox.innerHTML = btnHtml;
+        }
       }
 
       document.getElementById('detail-modal').classList.remove('hidden');
       lucide.createIcons();
     }
 
+    function toggleModalRepair() {
+      if (!currentModalStudent) return;
+      const { stuKey, isRepaired } = currentModalStudent;
+
+      if (isRepaired) {
+        repairedSet.delete(stuKey);
+        showToast("↩️ 수리완료가 취소되었습니다. (이상보고로 복구)");
+      } else {
+        repairedSet.add(stuKey);
+        showToast("💜 수리완료 처리되었습니다! (분실/파손 필터에서 제외)");
+      }
+      
+      saveRepairedStatus();
+      closeDetailModal();
+      renderDashboard();
+    }
+
     function closeDetailModal() {
       document.getElementById('detail-modal').classList.add('hidden');
+      currentModalStudent = null;
     }
 
     function switchGrade(grade) {
@@ -995,8 +1093,11 @@
         return;
       }
 
-      const headers = ["학교명", "학번", "학년", "반", "번호", "성명", "기기상태", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
+      const headers = ["학교명", "학번", "학년", "반", "번호", "성명", "기기상태", "수리여부", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
       const rows = currentExportList.map(stu => {
+        const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
+        const isRepaired = repairedSet.has(stuKey);
+
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
           Number(s.classNum) === Number(stu.classNum) && 
@@ -1007,9 +1108,10 @@
         const studentId = `${stu.grade}${String(stu.classNum).padStart(2, '0')}${String(stu.num).padStart(2, '0')}`;
 
         if (!status.isSubmitted) {
-          return [activeSchool, studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-"];
+          return [activeSchool, studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-", "-"];
         } else {
           const statusText = (status.isIssue || status.hasNote) ? "이상/소견보고" : "정상";
+          const repairText = isRepaired ? "수리완료" : (status.isIssue ? "미수리" : "해당없음");
           const safeNote = `"${(sub.note || '-').replace(/"/g, '""')}"`;
           return [
             activeSchool,
@@ -1019,6 +1121,7 @@
             `${stu.num}번`,
             stu.name,
             statusText,
+            repairText,
             sub.tablet,
             sub.pen,
             safeNote,
