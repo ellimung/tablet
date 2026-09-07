@@ -8,14 +8,32 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  
+  <!-- ⭐ [0초 차단 스크립트] 학생 접속 시 교사용 화면이 단 0.01초도 깜빡이지 않도록 즉시 제어 -->
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('mode') === 'student') {
+        document.documentElement.classList.add('mode-student');
+      }
+    })();
+  </script>
+
   <style>
     @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
     body { font-family: 'Pretendard', sans-serif; }
+    
+    /* 학생 접속 시 교사 화면 0.00초 즉시 차단 */
+    .mode-student #admin-view-container { display: none !important; }
+    .mode-student #student-view-container { display: flex !important; }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="bg-slate-100 min-h-screen text-slate-800 relative">
 
-  <!-- ================= [학생 전용 모드 화면 (?mode=student)] ================= -->
+  <!-- ================= 🔔 3초 자동 소멸 토스트 알림 컨테이너 ================= -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ================= [1. 학생 전용 모드 화면 (?mode=student 접속 시)] ================= -->
   <div id="student-view-container" class="hidden min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-white p-6 rounded-2xl border border-slate-200 shadow-xl space-y-5">
       
@@ -95,8 +113,8 @@
     </div>
   </div>
 
-  <!-- ================= [관리자 전체 대시보드 화면] ================= -->
-  <div id="admin-view-container">
+  <!-- ================= [2. 관리자 전체 대시보드 화면] ================= -->
+  <div id="admin-view-container" class="hidden">
     <header class="bg-[#0F172A] text-white px-6 py-4 shadow-md">
       <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
         <div>
@@ -114,7 +132,7 @@
               <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> 구글 클라우드 DB 연동 중
             </span>
             <span id="active-sheet-badge" class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[11px] border border-slate-700">
-              시트: 로딩 중...
+              시트: 연결 중...
             </span>
           </p>
         </div>
@@ -361,12 +379,12 @@
     </div>
   </div>
 
-  <!-- ================= [JavaScript 통신 엔진] ================= -->
+  <!-- ================= [3. JavaScript 통신 및 토스트 엔진] ================= -->
   <script>
     // ⚠️ 구글 웹앱 URL을 꼭 여기에 넣으세요!
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjQ6ERljPsRoe4-Gi7OrEF6gMm0N8REthsmn4v_2oWdOJ3UlxXEEAmhngDYTR2FCSv/exec";
 
-    let activeSchool = "남대전고";
+    let activeSchool = "A초등학교";
     let currentGrade = 1;
     let selectedClass = null;
     let selectedFilters = new Set();
@@ -381,36 +399,39 @@
       activeSheetName: "점검기록_진행중"
     };
 
+    // ⭐ [3초 자동 소멸 토스트 팝업 함수]
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const bg = (type === 'error') ? 'bg-rose-600' : 'bg-slate-900/95';
+      const icon = (type === 'error') ? 'alert-circle' : 'check-circle-2';
+      const iconColor = (type === 'error') ? 'text-rose-300' : 'text-emerald-400';
+
+      toast.className = `${bg} text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-2.5 pointer-events-auto transform transition-all duration-300 opacity-0 translate-y-3`;
+      toast.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4 ${iconColor}"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      lucide.createIcons();
+
+      // 등장
+      setTimeout(() => {
+        toast.classList.remove('opacity-0', 'translate-y-3');
+      }, 20);
+
+      // 3초 후 자동 소멸
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-3');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       lucide.createIcons();
-      await initSchoolsList();
       checkUrlMode();
+      await initSchoolsList();
       fetchData();
     });
 
-    async function initSchoolsList() {
-      if (!GAS_API_URL || GAS_API_URL.includes("여기에_")) return;
-      try {
-        const res = await fetch(`${GAS_API_URL}?action=getSchoolList`);
-        const data = await res.json();
-        if (data && data.schools) {
-          const selectEl = document.getElementById('select-active-school');
-          selectEl.innerHTML = data.schools.map(sch => `<option value="${sch}">${sch}</option>`).join('');
-          activeSchool = data.schools[0];
-        }
-      } catch(e) {
-        console.error("학교 목록 로드 실패:", e);
-      }
-    }
-
-    function handleSchoolSwitch() {
-      activeSchool = document.getElementById('select-active-school').value;
-      selectedClass = null;
-      selectedFilters.clear();
-      syncGradeClassSelection();
-      fetchData(true);
-    }
-
+    // 화면 모드 제어 (학생 vs 교사)
     function checkUrlMode() {
       const urlParams = new URLSearchParams(window.location.search);
       const isStudent = (urlParams.get('mode') === 'student');
@@ -424,8 +445,35 @@
         document.getElementById('student-view-container').classList.remove('hidden');
         document.getElementById('student-target-badge').innerText = `${sch} ${g}학년 ${c}반 점검`;
       } else {
+        document.getElementById('admin-view-container').classList.remove('hidden');
+        document.getElementById('student-view-container').classList.add('hidden');
         syncGradeClassSelection();
       }
+    }
+
+    async function initSchoolsList() {
+      if (!GAS_API_URL || GAS_API_URL.includes("여기에_")) return;
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getSchoolList`);
+        const data = await res.json();
+        if (data && data.schools && data.schools.length > 0) {
+          const selectEl = document.getElementById('select-active-school');
+          selectEl.innerHTML = data.schools.map(sch => `<option value="${sch}">${sch}</option>`).join('');
+          activeSchool = data.schools[0];
+          syncGradeClassSelection();
+        }
+      } catch(e) {
+        console.error("학교 목록 로드 실패:", e);
+      }
+    }
+
+    function handleSchoolSwitch() {
+      activeSchool = document.getElementById('select-active-school').value;
+      selectedClass = null;
+      selectedFilters.clear();
+      syncGradeClassSelection();
+      fetchData();
+      showToast(`🏫 [${activeSchool}] 데이터로 전환되었습니다.`);
     }
 
     function syncGradeClassSelection() {
@@ -444,7 +492,7 @@
       const box = document.getElementById('qr-url-box');
       box.select();
       navigator.clipboard.writeText(box.value);
-      alert(`[${activeSchool}] 학생용 QR 접속 링크가 복사되었습니다!`);
+      showToast(`📋 [${activeSchool}] 학생용 QR 링크가 복사되었습니다!`);
     }
 
     async function fetchData(isManual = false) {
@@ -460,7 +508,7 @@
             badge.innerText = `시트: ${data.activeSheetName}`;
           }
           renderDashboard();
-          if (isManual) alert(`✅ [${activeSchool}] 최신 점검 데이터로 새로고침되었습니다.`);
+          if (isManual) showToast(`🔄 [${activeSchool}] 데이터가 새로고침되었습니다.`);
         }
       } catch (err) {
         console.error("데이터 로드 실패:", err);
@@ -474,7 +522,7 @@
         state.submissions = [];
         renderDashboard();
         fetchData();
-        alert(`✅ [${activeSchool}] 점검이 초기화되었습니다.`);
+        showToast(`✅ [${activeSchool}] 점검이 초기화되었습니다.`);
       } catch(err) {
         console.error("초기화 실패:", err);
       }
@@ -582,7 +630,7 @@
       );
 
       if (state.students.length > 0 && !matched) {
-        alert(`❌ [명단 불일치]\n${activeSchool} ${adminBoundGrade}학년 ${adminBoundClass}반 ${inputNum}번 '${inputName}' 학생이 명단에 없습니다.`);
+        showToast(`❌ [명단 불일치] ${inputNum}번 '${inputName}' 학생이 명단에 없습니다.`, 'error');
         return;
       }
 
@@ -598,7 +646,8 @@
         });
         btn.innerText = "점검 서명 및 결과 제출하기";
         btn.disabled = false;
-        alert(`[${activeSchool} ${adminBoundGrade}학년 ${adminBoundClass}반 ${inputNum}번 ${inputName}] 점검이 기록되었습니다.`);
+        
+        showToast(`✅ [${inputNum}번 ${inputName}] 점검이 기록되었습니다.`);
         document.getElementById('admin-form-num').value = '';
         document.getElementById('admin-form-name').value = '';
         document.getElementById('admin-form-tablet').value = '';
@@ -608,7 +657,7 @@
       } catch(err) {
         btn.innerText = "점검 서명 및 결과 제출하기";
         btn.disabled = false;
-        alert("제출 실패: " + err.message);
+        showToast("제출 실패: " + err.message, 'error');
       }
     }
 
@@ -654,6 +703,7 @@
       selectedFilters.clear();
       selectedClass = null;
       renderDashboard();
+      showToast("🔍 전체 반 및 필터가 초기화되었습니다.");
     }
 
     function renderDashboard() {
@@ -936,7 +986,7 @@
 
     function downloadExcel() {
       if (!currentExportList || currentExportList.length === 0) {
-        alert("다운로드할 학생 데이터가 없습니다.");
+        showToast("다운로드할 학생 데이터가 없습니다.", 'error');
         return;
       }
 
@@ -986,6 +1036,7 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      showToast("📥 엑셀 파일이 다운로드되었습니다.");
     }
   </script>
 </body>
