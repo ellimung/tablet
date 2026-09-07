@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>스마트 단말기 관리 시스템</title>
+  <!-- Tailwind CSS & Lucide Icons & Confetti -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body { font-family: 'Pretendard', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- ================= [학생 전용 모드 화면 (?mode=student)] ================= -->
+  <div id="student-view-container" class="hidden min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white p-6 rounded-2xl border border-slate-200 shadow-xl space-y-5">
+      
+      <div class="flex items-center justify-between border-b pb-3 border-slate-100">
+        <div class="flex items-center gap-2 font-bold text-slate-800 text-base">
+          <span class="w-3 h-3 bg-blue-600 rounded-full inline-block"></span>
+          <span>스마트 단말기 정기 자가점검 응답지</span>
+        </div>
+        <span id="student-target-badge" class="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-md border border-blue-200 shadow-sm">
+          점검 준비 중
+        </span>
+      </div>
+
+      <div id="form-input-section" class="space-y-4">
+        <form id="inspection-form" onsubmit="submitForm(event)" class="space-y-4">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">출석 번호 <span class="text-red-500">*</span></label>
+              <input type="number" id="form-num" required placeholder="번호 입력" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-center">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">학생 성명 <span class="text-red-500">*</span></label>
+              <input type="text" id="form-name" required placeholder="성명 입력" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-center">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">📱 태블릿 단말 상태 <span class="text-red-500">*</span></label>
+            <select id="form-tablet" required class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="" disabled selected>선택</option>
+              <option value="정상">정상</option>
+              <option value="파손">파손 / 작동불량</option>
+              <option value="분실">분실</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">✏️ 터치 S펜 상태 <span class="text-red-500">*</span></label>
+            <select id="form-pen" required class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="" disabled selected>선택</option>
+              <option value="정상">정상</option>
+              <option value="파손">파손 / 인식불량</option>
+              <option value="분실">분실</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">불량 부품 및 특이 증상이 있을 시 기재 (선택)</label>
+            <input type="text" id="form-note" placeholder="이상 증상이 있을 경우 상세히 적어주세요." class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <button type="submit" id="btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2">
+            점검 서명 및 결과 제출하기
+          </button>
+        </form>
+      </div>
+
+      <div id="form-success-section" class="hidden py-6 text-center space-y-5">
+        <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+          <i data-lucide="check-circle-2" class="w-10 h-10"></i>
+        </div>
+        <div class="space-y-1">
+          <h3 class="text-lg font-extrabold text-slate-800">응답이 성공적으로 제출되었습니다.</h3>
+          <p id="success-submitted-info" class="text-sm font-semibold text-blue-600">제출 완료</p>
+          <p class="text-xs text-slate-500">점검 결과가 해당 학교 파일에 안전하게 기록되었습니다.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button onclick="handleEditResponse()" class="flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition shadow-sm">
+            <i data-lucide="edit-3" class="w-3.5 h-3.5 text-slate-500"></i> 응답 수정하기
+          </button>
+          <button onclick="handleNewResponse()" class="flex items-center justify-center gap-1.5 py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition shadow-sm">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> 다른 응답 제출
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= [관리자 전체 대시보드 화면] ================= -->
+  <div id="admin-view-container">
+    <header class="bg-[#0F172A] text-white px-6 py-4 shadow-md">
+      <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
+        <div>
+          <div class="flex items-center gap-3">
+            <span class="text-2xl">🏫</span>
+            <h1 class="text-xl font-bold tracking-tight">스마트 에듀테크 관리 시스템</h1>
+            
+            <!-- 학교 선택 드롭다운 -->
+            <select id="select-active-school" onchange="handleSchoolSwitch()" class="bg-slate-800 border-2 border-emerald-400 text-emerald-300 text-xs font-black px-3 py-1.5 rounded-xl focus:outline-none cursor-pointer">
+            </select>
+          </div>
+          <p class="text-xs text-slate-400 mt-1 flex items-center gap-2">
+            학교별 독립 파일 연동 | 
+            <span class="inline-flex items-center text-emerald-400 gap-1 font-semibold">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> 구글 클라우드 DB 연동 중
+            </span>
+            <span id="active-sheet-badge" class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[11px] border border-slate-700">
+              시트: 로딩 중...
+            </span>
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button onclick="fetchData(true)" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 데이터 새로고침
+          </button>
+          <button onclick="resetInspection()" class="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
+            <i data-lucide="calendar-x-2" class="w-3.5 h-3.5"></i> 이번 학교 점검 초기화 (새 시트)
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="bg-[#1E293B] border-t border-slate-700">
+      <div class="max-w-7xl mx-auto flex px-6 overflow-x-auto">
+        <button onclick="switchGrade('all')" id="tab-grade-all" class="grade-tab px-5 py-3 font-bold text-sm text-slate-400 hover:text-white border-b-4 border-transparent flex items-center gap-1.5 whitespace-nowrap">
+          <i data-lucide="layers" class="w-4 h-4"></i> 전체 학년 대시보드
+        </button>
+        <button onclick="switchGrade(1)" id="tab-grade-1" class="grade-tab px-5 py-3 font-bold text-sm text-white border-b-4 border-blue-500 flex items-center gap-1.5 whitespace-nowrap">
+          <i data-lucide="graduation-cap" class="w-4 h-4"></i> 1학년 대시보드 (1~10반)
+        </button>
+        <button onclick="switchGrade(2)" id="tab-grade-2" class="grade-tab px-5 py-3 font-bold text-sm text-slate-400 hover:text-white border-b-4 border-transparent flex items-center gap-1.5 whitespace-nowrap">
+          <i data-lucide="graduation-cap" class="w-4 h-4"></i> 2학년 대시보드 (1~10반)
+        </button>
+        <button onclick="switchGrade(3)" id="tab-grade-3" class="grade-tab px-5 py-3 font-bold text-sm text-slate-400 hover:text-white border-b-4 border-transparent flex items-center gap-1.5 whitespace-nowrap">
+          <i data-lucide="graduation-cap" class="w-4 h-4"></i> 3학년 대시보드 (1~10반)
+        </button>
+      </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+      <section class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        <div id="card-filter-submitted" onclick="toggleFilter('submitted')" class="bg-white p-3.5 rounded-xl border-2 border-slate-200 shadow-sm cursor-pointer hover:border-blue-400 transition relative">
+          <div class="flex justify-between items-center text-xs text-slate-500 font-semibold mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="clipboard-check" class="w-3.5 h-3.5 text-slate-400"></i> 제출 인원</span>
+            <span id="badge-filter-submitted" class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">필터</span>
+          </div>
+          <div class="text-lg font-black text-slate-800">
+            <span id="stat-submitted" class="text-blue-600 text-xl">0</span> / <span id="stat-total">0</span>명 완료
+          </div>
+        </div>
+
+        <div id="card-filter-missing" onclick="toggleFilter('missing')" class="bg-white p-3.5 rounded-xl border-2 border-slate-200 shadow-sm cursor-pointer hover:border-amber-400 transition relative">
+          <div class="flex justify-between items-center text-xs text-slate-500 font-semibold mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="pin" class="w-3.5 h-3.5 text-amber-500"></i> 미제출 대기</span>
+            <span id="badge-filter-missing" class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">필터</span>
+          </div>
+          <div class="text-lg font-black text-slate-800">
+            <span id="stat-pending" class="text-amber-500 text-xl">0</span> 명 대기 중
+          </div>
+        </div>
+
+        <div id="card-filter-lost" onclick="toggleFilter('lost')" class="bg-white p-3.5 rounded-xl border-2 border-slate-200 shadow-sm cursor-pointer hover:border-red-400 transition relative">
+          <div class="flex justify-between items-center text-xs text-slate-500 font-semibold mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="help-circle" class="w-3.5 h-3.5 text-red-500"></i> 분실 (<span id="stat-lost-total">0</span>건)</span>
+            <span id="badge-filter-lost" class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">필터</span>
+          </div>
+          <div class="text-xs font-bold text-slate-600 mt-1 space-x-1.5">
+            패드 <span id="stat-lost-pad" class="text-red-500 font-black">0</span> / 
+            펜 <span id="stat-lost-pen" class="text-red-500 font-black">0</span>
+          </div>
+        </div>
+
+        <div id="card-filter-broken" onclick="toggleFilter('broken')" class="bg-white p-3.5 rounded-xl border-2 border-slate-200 shadow-sm cursor-pointer hover:border-orange-400 transition relative">
+          <div class="flex justify-between items-center text-xs text-slate-500 font-semibold mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="wrench" class="w-3.5 h-3.5 text-orange-500"></i> 파손·고장 (<span id="stat-broken-total">0</span>건)</span>
+            <span id="badge-filter-broken" class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">필터</span>
+          </div>
+          <div class="text-xs font-bold text-slate-600 mt-1 space-x-1.5">
+            패드 <span id="stat-broken-pad" class="text-red-500 font-black">0</span> / 
+            펜 <span id="stat-broken-pen" class="text-red-500 font-black">0</span>
+          </div>
+        </div>
+
+        <div id="card-filter-note" onclick="toggleFilter('note')" class="bg-white p-3.5 rounded-xl border-2 border-slate-200 shadow-sm cursor-pointer hover:border-purple-400 transition relative">
+          <div class="flex justify-between items-center text-xs text-slate-500 font-semibold mb-1">
+            <span class="flex items-center gap-1"><i data-lucide="file-text" class="w-3.5 h-3.5 text-purple-600"></i> 특이소견 (<span id="stat-note-total">0</span>건)</span>
+            <span id="badge-filter-note" class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold">필터</span>
+          </div>
+          <div class="text-xs font-bold text-purple-700 mt-1">
+            메모 기재 <span id="stat-note-detail" class="font-black text-sm text-purple-600">0</span>건
+          </div>
+        </div>
+      </section>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <div class="lg:col-span-4 space-y-6">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 text-blue-600 font-bold text-sm">
+              <i data-lucide="qr-code" class="w-4 h-4"></i> 2. 반별 고유 QR 링크 코드 추출기
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed">
+              선택한 학교/반의 링크로 QR 코드를 생성하세요. 학생이 스캔하면 해당 학교 파일로 자동 연결됩니다.
+            </p>
+            <div class="grid grid-cols-2 gap-3">
+              <select id="qr-grade-select" onchange="syncGradeClassSelection()" class="border border-slate-300 rounded-lg p-2 text-sm font-semibold">
+                <option value="1">1학년</option>
+                <option value="2">2학년</option>
+                <option value="3">3학년</option>
+              </select>
+              <select id="qr-class-select" onchange="syncGradeClassSelection()" class="border border-slate-300 rounded-lg p-2 text-sm font-semibold">
+                <option value="1">1반</option><option value="2">2반</option>
+                <option value="3">3반</option><option value="4">4반</option>
+                <option value="5" selected>5반</option><option value="6">6반</option>
+                <option value="7">7반</option><option value="8">8반</option>
+                <option value="9">9반</option><option value="10">10반</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="text" id="qr-url-box" readonly class="w-full bg-slate-900 text-emerald-400 font-mono text-xs px-3 py-2.5 rounded-lg border border-slate-700 overflow-ellipsis" />
+              <button onclick="copyQrLink()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3.5 py-2.5 rounded-lg font-bold shrink-0">복사</button>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b pb-3 border-slate-100">
+              <div class="flex items-center gap-2 font-bold text-slate-800 text-base">
+                <span class="bg-indigo-600 text-white p-1.5 rounded-lg"><i data-lucide="check-square" class="w-4 h-4"></i></span>
+                <span>스마트 단말기 정기 자가점검 응답지</span>
+              </div>
+              <span id="current-form-target-text" class="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-100">
+                1학년 5반 설정됨
+              </span>
+            </div>
+
+            <form onsubmit="submitAdminForm(event)" class="space-y-4">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">출석 번호 <span class="text-red-500">*</span></label>
+                  <input type="number" id="admin-form-num" required placeholder="번호 입력" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-center">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-700 mb-1">학생 성명 <span class="text-red-500">*</span></label>
+                  <input type="text" id="admin-form-name" required placeholder="성명 입력" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-center">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">📱 태블릿 단말 상태 <span class="text-red-500">*</span></label>
+                <select id="admin-form-tablet" required class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white font-medium">
+                  <option value="" disabled selected>선택</option>
+                  <option value="정상">정상</option>
+                  <option value="파손">파손 / 작동불량</option>
+                  <option value="분실">분실</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">✏️ 터치 S펜 상태 <span class="text-red-500">*</span></label>
+                <select id="admin-form-pen" required class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm bg-white font-medium">
+                  <option value="" disabled selected>선택</option>
+                  <option value="정상">정상</option>
+                  <option value="파손">파손 / 인식불량</option>
+                  <option value="분실">분실</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">불량 부품 및 특이 증상이 있을 시 기재 (선택)</label>
+                <input type="text" id="admin-form-note" placeholder="이상 증상이 있을 경우 상세히 적어주세요." class="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <button type="submit" id="admin-btn-submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2">
+                점검 서명 및 결과 제출하기
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div class="lg:col-span-8 space-y-6">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div class="flex justify-between items-center">
+              <h2 class="text-sm font-bold text-blue-700 flex items-center gap-1.5">
+                <span id="monitoring-title-grade">1학년</span> 차트 1: 반별 모니터링 타일
+              </h2>
+              <button onclick="clearAllFilters()" class="text-[11px] bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded font-bold transition">
+                전체 반 / 전체 필터 초기화
+              </button>
+            </div>
+            <div class="flex items-center gap-3 text-[11px] font-semibold text-slate-500">
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300 inline-block"></span> 시작 전 (0명)</span>
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-red-100 border border-red-500 inline-block"></span> 미완료 (진행 중)</span>
+              <span class="inline-flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-500 inline-block"></span> 전원 완료 (100%)</span>
+            </div>
+            <div id="class-tiles-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5"></div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-2 border-b pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                  <span>차트 2: 상세 학생 목록</span>
+                  <span id="current-filter-desc" class="text-xs text-blue-600 font-bold">(전체 상태 / 전체 반 출력 중)</span>
+                </h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">※ 각 학생 타일을 클릭하면 상세 점검 내역을 확인할 수 있습니다.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="downloadExcel()" class="flex items-center gap-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition shadow-sm">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i> 엑셀 다운로드
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-blue-500 bg-blue-50 inline-block"></span> 미제출 (파란 테두리)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-red-500 bg-red-50 inline-block"></span> 이상보고 / 특이사항 (빨간 테두리)</span>
+              <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded border-2 border-slate-200 bg-white inline-block"></span> 정상 (기본 테두리)</span>
+            </div>
+
+            <div id="student-tiles-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3 max-h-[600px] overflow-y-auto p-1"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 상세 점검 내역 팝업 모달 -->
+  <div id="detail-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+      <div class="flex justify-between items-center border-b pb-3">
+        <h4 id="modal-student-title" class="font-extrabold text-slate-800 text-base">10101 홍길동</h4>
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div class="flex justify-between items-center py-1 border-b border-slate-100">
+          <span class="text-slate-500 font-semibold">제출 상태</span>
+          <span id="modal-submit-status" class="font-bold">미제출</span>
+        </div>
+        <div class="flex justify-between items-center py-1 border-b border-slate-100">
+          <span class="text-slate-500 font-semibold">📱 태블릿 상태</span>
+          <span id="modal-tablet-status" class="font-bold">-</span>
+        </div>
+        <div class="flex justify-between items-center py-1 border-b border-slate-100">
+          <span class="text-slate-500 font-semibold">✏️ 터치 S펜 상태</span>
+          <span id="modal-pen-status" class="font-bold">-</span>
+        </div>
+        <div class="py-1">
+          <span class="text-slate-500 font-semibold block mb-1">📝 특이사항 및 소견</span>
+          <div id="modal-note-box" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-700 font-medium whitespace-pre-wrap min-h-[50px]">-</div>
+        </div>
+        <div class="text-[11px] text-slate-400 text-right" id="modal-timestamp">제출일시: -</div>
+      </div>
+      <button onclick="closeDetailModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs transition">확인 및 닫기</button>
+    </div>
+  </div>
+
+  <!-- ================= [JavaScript 통신 엔진] ================= -->
+  <script>
+    // ⚠️ 구글 웹앱 URL을 꼭 여기에 넣으세요!
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjQ6ERljPsRoe4-Gi7OrEF6gMm0N8REthsmn4v_2oWdOJ3UlxXEEAmhngDYTR2FCSv/exec";
+
+    let activeSchool = "남대전";
+    let currentGrade = 1;
+    let selectedClass = null;
+    let selectedFilters = new Set();
+    let adminBoundGrade = 1;
+    let adminBoundClass = 5;
+    let lastSubmittedData = null;
+    let currentExportList = [];
+
+    let state = {
+      students: [],
+      submissions: [],
+      activeSheetName: "점검기록_진행중"
+    };
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      lucide.createIcons();
+      await initSchoolsList();
+      checkUrlMode();
+      fetchData();
+    });
+
+    async function initSchoolsList() {
+      if (!GAS_API_URL || GAS_API_URL.includes("여기에_")) return;
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getSchoolList`);
+        const data = await res.json();
+        if (data && data.schools) {
+          const selectEl = document.getElementById('select-active-school');
+          selectEl.innerHTML = data.schools.map(sch => `<option value="${sch}">${sch}</option>`).join('');
+          activeSchool = data.schools[0];
+        }
+      } catch(e) {
+        console.error("학교 목록 로드 실패:", e);
+      }
+    }
+
+    function handleSchoolSwitch() {
+      activeSchool = document.getElementById('select-active-school').value;
+      selectedClass = null;
+      selectedFilters.clear();
+      syncGradeClassSelection();
+      fetchData(true);
+    }
+
+    function checkUrlMode() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isStudent = (urlParams.get('mode') === 'student');
+      const sch = urlParams.get('school') || activeSchool;
+      const g = parseInt(urlParams.get('grade')) || 1;
+      const c = parseInt(urlParams.get('class')) || 5;
+
+      if (isStudent) {
+        activeSchool = sch;
+        document.getElementById('admin-view-container').classList.add('hidden');
+        document.getElementById('student-view-container').classList.remove('hidden');
+        document.getElementById('student-target-badge').innerText = `${sch} ${g}학년 ${c}반 점검`;
+      } else {
+        syncGradeClassSelection();
+      }
+    }
+
+    function syncGradeClassSelection() {
+      const g = document.getElementById('qr-grade-select').value;
+      const c = document.getElementById('qr-class-select').value;
+      adminBoundGrade = parseInt(g);
+      adminBoundClass = parseInt(c);
+
+      const baseUrl = window.location.origin + window.location.pathname;
+      const fullUrl = `${baseUrl}?school=${encodeURIComponent(activeSchool)}&grade=${g}&class=${c}&mode=student`;
+      document.getElementById('qr-url-box').value = fullUrl;
+      document.getElementById('current-form-target-text').innerText = `${activeSchool} ${g}학년 ${c}반 설정됨`;
+    }
+
+    function copyQrLink() {
+      const box = document.getElementById('qr-url-box');
+      box.select();
+      navigator.clipboard.writeText(box.value);
+      alert(`[${activeSchool}] 학생용 QR 접속 링크가 복사되었습니다!`);
+    }
+
+    async function fetchData(isManual = false) {
+      if (!GAS_API_URL || GAS_API_URL.includes("여기에_")) return;
+
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getData&school=${encodeURIComponent(activeSchool)}`);
+        const data = await res.json();
+        if (data && data.students) {
+          state = data;
+          const badge = document.getElementById('active-sheet-badge');
+          if (badge && data.activeSheetName) {
+            badge.innerText = `시트: ${data.activeSheetName}`;
+          }
+          renderDashboard();
+          if (isManual) alert(`✅ [${activeSchool}] 최신 점검 데이터로 새로고침되었습니다.`);
+        }
+      } catch (err) {
+        console.error("데이터 로드 실패:", err);
+      }
+    }
+
+    async function resetInspection() {
+      if (!confirm(`정말 [${activeSchool}] 이번 회차 점검을 초기화하시겠습니까?\n기존 기록은 해당 학교 파일에 안전하게 보존되고 새 날짜 시트가 생성됩니다.`)) return;
+      try {
+        await fetch(`${GAS_API_URL}?action=reset&school=${encodeURIComponent(activeSchool)}`);
+        state.submissions = [];
+        renderDashboard();
+        fetchData();
+        alert(`✅ [${activeSchool}] 점검이 초기화되었습니다.`);
+      } catch(err) {
+        console.error("초기화 실패:", err);
+      }
+    }
+
+    function checkStudentStatus(sub) {
+      if (!sub) {
+        return { isSubmitted: false, isNormal: false, isLost: false, isBroken: false, isIssue: false, hasNote: false, lostTablet: false, lostPen: false, brokenTablet: false, brokenPen: false, issues: [] };
+      }
+
+      const t = String(sub.tablet || '');
+      const p = String(sub.pen || '');
+      const hasNote = sub.note && sub.note.trim() !== '' && sub.note.trim() !== '-';
+
+      const lostTablet = t.includes('분실');
+      const lostPen = p.includes('분실');
+      const brokenTablet = t.includes('파손');
+      const brokenPen = p.includes('파손');
+
+      const isLost = lostTablet || lostPen;
+      const isBroken = brokenTablet || brokenPen;
+      const isIssue = isLost || isBroken;
+      const isNormal = !isIssue && !hasNote;
+
+      let issues = [];
+      if (lostTablet) issues.push('패드:분실');
+      else if (brokenTablet) issues.push('패드:파손');
+
+      if (lostPen) issues.push('펜:분실');
+      else if (brokenPen) issues.push('펜:파손');
+
+      return {
+        isSubmitted: true, isNormal, isLost, isBroken, isIssue, hasNote,
+        lostTablet, lostPen, brokenTablet, brokenPen, issues
+      };
+    }
+
+    async function submitForm(e) {
+      e.preventDefault();
+      const urlParams = new URLSearchParams(window.location.search);
+      const sch = urlParams.get('school') || activeSchool;
+      const g = parseInt(urlParams.get('grade')) || 1;
+      const c = parseInt(urlParams.get('class')) || 5;
+
+      const inputNum = parseInt(document.getElementById('form-num').value);
+      const inputName = document.getElementById('form-name').value.trim();
+      const tablet = document.getElementById('form-tablet').value;
+      const pen = document.getElementById('form-pen').value;
+      const note = document.getElementById('form-note').value.trim();
+
+      const matched = state.students.find(s => 
+        Number(s.grade) === Number(g) &&
+        Number(s.classNum) === Number(c) &&
+        Number(s.num) === Number(inputNum) &&
+        s.name.trim() === inputName
+      );
+
+      if (state.students.length > 0 && !matched) {
+        alert(`❌ [학생 명단 불일치]\n\n${sch} ${g}학년 ${c}반 ${inputNum}번 '${inputName}' 학생은 등록된 명단과 일치하지 않습니다.\n\n출석 번호와 이름을 다시 한번 확인 후 작성해주세요.`);
+        return;
+      }
+
+      const payload = { school: sch, grade: g, classNum: c, num: inputNum, name: inputName, tablet, pen, note };
+      lastSubmittedData = { ...payload };
+
+      const btn = document.getElementById('btn-submit');
+      btn.innerText = "제출 중...";
+      btn.disabled = true;
+
+      try {
+        const res = await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        btn.innerText = "점검 서명 및 결과 제출하기";
+        btn.disabled = false;
+
+        if (result.status === "error") {
+          alert("❌ 오류: " + result.message);
+          return;
+        }
+
+        showSuccessSection(payload);
+      } catch(err) {
+        btn.innerText = "점검 서명 및 결과 제출하기";
+        btn.disabled = false;
+        alert("제출 실패: " + err.message);
+      }
+    }
+
+    async function submitAdminForm(e) {
+      e.preventDefault();
+      const inputNum = parseInt(document.getElementById('admin-form-num').value);
+      const inputName = document.getElementById('admin-form-name').value.trim();
+      const tablet = document.getElementById('admin-form-tablet').value;
+      const pen = document.getElementById('admin-form-pen').value;
+      const note = document.getElementById('admin-form-note').value.trim();
+
+      const matched = state.students.find(s => 
+        Number(s.grade) === Number(adminBoundGrade) &&
+        Number(s.classNum) === Number(adminBoundClass) &&
+        Number(s.num) === Number(inputNum) &&
+        s.name.trim() === inputName
+      );
+
+      if (state.students.length > 0 && !matched) {
+        alert(`❌ [명단 불일치]\n${activeSchool} ${adminBoundGrade}학년 ${adminBoundClass}반 ${inputNum}번 '${inputName}' 학생이 명단에 없습니다.`);
+        return;
+      }
+
+      const payload = { school: activeSchool, grade: adminBoundGrade, classNum: adminBoundClass, num: inputNum, name: inputName, tablet, pen, note };
+      const btn = document.getElementById('admin-btn-submit');
+      btn.innerText = "제출 중...";
+      btn.disabled = true;
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        btn.innerText = "점검 서명 및 결과 제출하기";
+        btn.disabled = false;
+        alert(`[${activeSchool} ${adminBoundGrade}학년 ${adminBoundClass}반 ${inputNum}번 ${inputName}] 점검이 기록되었습니다.`);
+        document.getElementById('admin-form-num').value = '';
+        document.getElementById('admin-form-name').value = '';
+        document.getElementById('admin-form-tablet').value = '';
+        document.getElementById('admin-form-pen').value = '';
+        document.getElementById('admin-form-note').value = '';
+        fetchData();
+      } catch(err) {
+        btn.innerText = "점검 서명 및 결과 제출하기";
+        btn.disabled = false;
+        alert("제출 실패: " + err.message);
+      }
+    }
+
+    function showSuccessSection(data) {
+      document.getElementById('form-input-section').classList.add('hidden');
+      document.getElementById('form-success-section').classList.remove('hidden');
+      document.getElementById('success-submitted-info').innerText = `${data.school} ${data.grade}학년 ${data.classNum}반 ${data.num}번 ${data.name}`;
+      lucide.createIcons();
+    }
+
+    function handleEditResponse() {
+      if (!lastSubmittedData) return;
+      document.getElementById('form-num').value = lastSubmittedData.num;
+      document.getElementById('form-name').value = lastSubmittedData.name;
+      document.getElementById('form-tablet').value = lastSubmittedData.tablet;
+      document.getElementById('form-pen').value = lastSubmittedData.pen;
+      document.getElementById('form-note').value = lastSubmittedData.note || '';
+      document.getElementById('form-success-section').classList.add('hidden');
+      document.getElementById('form-input-section').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function handleNewResponse() {
+      document.getElementById('inspection-form').reset();
+      document.getElementById('form-tablet').value = '';
+      document.getElementById('form-pen').value = '';
+      document.getElementById('form-success-section').classList.add('hidden');
+      document.getElementById('form-input-section').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function toggleFilter(filterType) {
+      if (selectedFilters.has(filterType)) selectedFilters.delete(filterType);
+      else {
+        if (filterType === 'submitted') selectedFilters.delete('missing');
+        if (filterType === 'missing') selectedFilters.delete('submitted');
+        selectedFilters.add(filterType);
+      }
+      renderDashboard();
+    }
+
+    function clearAllFilters() {
+      selectedFilters.clear();
+      selectedClass = null;
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      if (new URLSearchParams(window.location.search).get('mode') === 'student') return;
+
+      const targetStudents = (currentGrade === 'all') 
+        ? state.students 
+        : state.students.filter(s => Number(s.grade) === Number(currentGrade));
+
+      let submittedCount = 0, lostPad = 0, lostPen = 0, brokenPad = 0, brokenPen = 0, noteCount = 0;
+
+      targetStudents.forEach(stu => {
+        const sub = state.submissions.find(s => 
+          Number(s.grade) === Number(stu.grade) && 
+          Number(s.classNum) === Number(stu.classNum) && 
+          Number(s.num) === Number(stu.num)
+        );
+
+        const status = checkStudentStatus(sub);
+        if (status.isSubmitted) {
+          submittedCount++;
+          if (status.lostTablet) lostPad++;
+          if (status.lostPen) lostPen++;
+          if (status.brokenTablet) brokenPad++;
+          if (status.brokenPen) brokenPen++;
+          if (status.hasNote) noteCount++;
+        }
+      });
+
+      document.getElementById('stat-submitted').innerText = submittedCount;
+      document.getElementById('stat-total').innerText = targetStudents.length;
+      document.getElementById('stat-pending').innerText = Math.max(0, targetStudents.length - submittedCount);
+      document.getElementById('stat-lost-total').innerText = lostPad + lostPen;
+      document.getElementById('stat-lost-pad').innerText = lostPad;
+      document.getElementById('stat-lost-pen').innerText = lostPen;
+      document.getElementById('stat-broken-total').innerText = brokenPad + brokenPen;
+      document.getElementById('stat-broken-pad').innerText = brokenPad;
+      document.getElementById('stat-broken-pen').innerText = brokenPen;
+      document.getElementById('stat-note-total').innerText = noteCount;
+      document.getElementById('stat-note-detail').innerText = noteCount;
+
+      updateCardVisualStyles();
+
+      // 차트 1
+      const tilesContainer = document.getElementById('class-tiles-grid');
+      tilesContainer.innerHTML = '';
+      document.getElementById('monitoring-title-grade').innerText = (currentGrade === 'all') ? `${activeSchool} 전체` : `${currentGrade}학년`;
+
+      for (let c = 1; c <= 10; c++) {
+        const classStus = targetStudents.filter(s => Number(s.classNum) === c);
+        const totalCount = classStus.length;
+        const classSubCount = classStus.filter(stu => 
+          state.submissions.some(sub => 
+            Number(sub.grade) === Number(stu.grade) && 
+            Number(sub.classNum) === Number(stu.classNum) && 
+            Number(sub.num) === Number(stu.num)
+          )
+        ).length;
+
+        const isSelected = selectedClass === c;
+        const tile = document.createElement('div');
+
+        let statusStyle = '';
+        let countTextHtml = '';
+
+        if (totalCount === 0 || classSubCount === 0) {
+          statusStyle = 'border-2 border-slate-200 bg-white hover:border-slate-300';
+          countTextHtml = `<div class="text-[11px] text-slate-500 font-semibold mt-0.5">(${classSubCount}/${totalCount})</div>`;
+        } else if (classSubCount >= totalCount) {
+          statusStyle = 'border-2 border-emerald-500 bg-emerald-50/70 hover:bg-emerald-100/70 shadow-sm';
+          countTextHtml = `<div class="text-[11px] text-emerald-700 font-black mt-0.5 flex items-center justify-center gap-1">(${classSubCount}/${totalCount}) <span class="bg-emerald-200 text-emerald-900 text-[10px] px-1 rounded">완료✓</span></div>`;
+        } else {
+          statusStyle = 'border-2 border-red-500 bg-red-50/70 hover:bg-red-100/70 shadow-sm';
+          countTextHtml = `<div class="text-[11px] text-red-600 font-black mt-0.5 flex items-center justify-center gap-1">(${classSubCount}/${totalCount}) <span class="bg-red-200 text-red-900 text-[10px] px-1 rounded">미완료</span></div>`;
+        }
+
+        const selectRing = isSelected ? 'ring-2 ring-blue-600 ring-offset-2 scale-[1.03] shadow-md' : '';
+        tile.className = `p-3 rounded-xl cursor-pointer transition-all duration-150 text-center ${statusStyle} ${selectRing}`;
+        tile.onclick = () => {
+          selectedClass = isSelected ? null : c;
+          renderDashboard();
+        };
+
+        const tileTitle = (currentGrade === 'all') ? `${c}반 (전체)` : `${currentGrade}-${c}반`;
+        tile.innerHTML = `<div class="text-xs font-black text-slate-800">${tileTitle}</div>${countTextHtml}`;
+        tilesContainer.appendChild(tile);
+      }
+
+      renderStudentTiles(targetStudents);
+      lucide.createIcons();
+    }
+
+    function updateCardVisualStyles() {
+      const cards = [
+        { id: 'submitted', border: 'border-blue-500', bg: 'bg-blue-50/60', badge: 'badge-filter-submitted' },
+        { id: 'missing', border: 'border-amber-500', bg: 'bg-amber-50/60', badge: 'badge-filter-missing' },
+        { id: 'lost', border: 'border-red-500', bg: 'bg-red-50/60', badge: 'badge-filter-lost' },
+        { id: 'broken', border: 'border-orange-500', bg: 'bg-orange-50/60', badge: 'badge-filter-broken' },
+        { id: 'note', border: 'border-purple-500', bg: 'bg-purple-50/60', badge: 'badge-filter-note' }
+      ];
+
+      cards.forEach(c => {
+        const el = document.getElementById(`card-filter-${c.id}`);
+        const badge = document.getElementById(c.badge);
+        if (!el || !badge) return;
+
+        if (selectedFilters.has(c.id)) {
+          el.className = `p-3.5 rounded-xl border-2 shadow-md cursor-pointer transition relative ${c.border} ${c.bg} ring-2 ring-offset-1`;
+          badge.className = "bg-blue-600 text-white px-1.5 py-0.5 rounded text-[10px] font-bold";
+          badge.innerText = "선택됨 ✓";
+        } else {
+          el.className = "bg-white p-3.5 rounded-xl border-2 border-slate-200 shadow-sm cursor-pointer hover:border-slate-400 transition relative";
+          badge.className = "bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-bold";
+          badge.innerText = "필터";
+        }
+      });
+    }
+
+    function renderStudentTiles(targetStudents) {
+      const grid = document.getElementById('student-tiles-grid');
+      grid.innerHTML = '';
+
+      let list = targetStudents;
+      if (selectedClass) list = list.filter(s => Number(s.classNum) === Number(selectedClass));
+
+      list = list.filter(stu => {
+        const sub = state.submissions.find(s => 
+          Number(s.grade) === Number(stu.grade) && 
+          Number(s.classNum) === Number(stu.classNum) && 
+          Number(s.num) === Number(stu.num)
+        );
+
+        if (selectedFilters.size === 0) return true;
+
+        const status = checkStudentStatus(sub);
+        let match = false;
+        if (selectedFilters.has('submitted') && status.isSubmitted) match = true;
+        if (selectedFilters.has('missing') && !status.isSubmitted) match = true;
+        if (selectedFilters.has('lost') && status.isLost) match = true;
+        if (selectedFilters.has('broken') && status.isBroken) match = true;
+        if (selectedFilters.has('note') && status.hasNote) match = true;
+
+        return match;
+      });
+
+      currentExportList = list;
+
+      let filterLabels = [];
+      if (selectedFilters.has('submitted')) filterLabels.push('제출완료');
+      if (selectedFilters.has('missing')) filterLabels.push('미제출');
+      if (selectedFilters.has('lost')) filterLabels.push('분실');
+      if (selectedFilters.has('broken')) filterLabels.push('파손·고장');
+      if (selectedFilters.has('note')) filterLabels.push('소견·메모');
+      
+      const filterText = filterLabels.length > 0 ? filterLabels.join(' + ') : '전체 상태';
+      const classText = selectedClass ? `${selectedClass}반 출력 중` : '전체 반 출력 중';
+      document.getElementById('current-filter-desc').innerText = `(${filterText} / ${classText})`;
+
+      if (list.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-10 space-y-2">
+            <p class="text-slate-400 font-semibold text-xs">선택된 조건에 해당하는 학생이 없습니다.</p>
+            ${selectedClass ? '<button onclick="clearAllFilters()" class="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1.5 rounded-lg hover:bg-blue-100 transition">전체 반에서 확인하기</button>' : ''}
+          </div>
+        `;
+        return;
+      }
+
+      list.forEach((stu, idx) => {
+        const sub = state.submissions.find(s => 
+          Number(s.grade) === Number(stu.grade) && 
+          Number(s.classNum) === Number(stu.classNum) && 
+          Number(s.num) === Number(stu.num)
+        );
+
+        const status = checkStudentStatus(sub);
+        const studentId = `${stu.grade}${String(stu.classNum).padStart(2, '0')}${String(stu.num).padStart(2, '0')}`;
+        const firstLine = `${studentId} ${stu.name}`;
+
+        let secondLineHtml = '';
+        let cardStyle = '';
+
+        if (!status.isSubmitted) {
+          secondLineHtml = `<span class="text-blue-600 font-bold text-[11px]">미제출</span>`;
+          cardStyle = `border-2 border-blue-500 bg-blue-50/40 hover:bg-blue-100/50`;
+        } else {
+          if (status.isIssue || status.hasNote) {
+            let issueText = status.issues.join(', ');
+            if (!issueText && status.hasNote) issueText = '특이사항 기재';
+
+            secondLineHtml = `<span class="text-red-600 font-bold text-[11px] truncate block" title="${issueText}">${issueText}</span>`;
+            cardStyle = `border-2 border-red-500 bg-red-50/50 ring-1 ring-red-300 hover:bg-red-100/60`;
+          } else {
+            secondLineHtml = `<span class="text-emerald-600 font-bold text-[11px]">정상</span>`;
+            cardStyle = `border-2 border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/30`;
+          }
+        }
+
+        let thirdLineNoteHtml = '';
+        if (status.hasNote) {
+          thirdLineNoteHtml = `<div class="text-[10px] text-purple-900 font-bold truncate bg-purple-100/80 px-1.5 py-0.5 rounded border border-purple-200 mt-1" title="소견: ${sub.note}">📝 ${sub.note}</div>`;
+        }
+
+        const tile = document.createElement('div');
+        tile.className = `p-2.5 rounded-xl cursor-pointer shadow-sm transition-all duration-150 flex flex-col justify-between min-h-[82px] ${cardStyle}`;
+        tile.onclick = () => openDetailModal(stu, sub, studentId);
+
+        tile.innerHTML = `
+          <div>
+            <div class="text-xs font-black text-slate-800 tracking-tight truncate">${firstLine}</div>
+            <div class="leading-tight mt-0.5">${secondLineHtml}</div>
+          </div>
+          ${thirdLineNoteHtml}
+        `;
+        grid.appendChild(tile);
+      });
+    }
+
+    function openDetailModal(stu, sub, studentId) {
+      document.getElementById('modal-student-title').innerText = `${studentId} ${stu.name} (${activeSchool} ${stu.grade}학년 ${stu.classNum}반 ${stu.num}번)`;
+
+      if (!sub) {
+        document.getElementById('modal-submit-status').innerHTML = `<span class="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">미제출</span>`;
+        document.getElementById('modal-tablet-status').innerText = '-';
+        document.getElementById('modal-pen-status').innerText = '-';
+        document.getElementById('modal-note-box').innerText = '아직 점검 결과가 제출되지 않았습니다.';
+        document.getElementById('modal-note-box').className = "bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-400 font-medium whitespace-pre-wrap min-h-[50px]";
+        document.getElementById('modal-timestamp').innerText = '제출일시: 미제출';
+      } else {
+        const status = checkStudentStatus(sub);
+        const statusBadge = (status.isIssue || status.hasNote)
+          ? `<span class="text-red-600 font-bold bg-red-50 px-2 py-0.5 rounded border border-red-200">이상/소견보고</span>`
+          : `<span class="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">정상 제출</span>`;
+
+        document.getElementById('modal-submit-status').innerHTML = statusBadge;
+        document.getElementById('modal-tablet-status').innerHTML = !status.lostTablet && !status.brokenTablet
+          ? `<span class="text-emerald-600 font-bold">${sub.tablet || '정상'}</span>` 
+          : `<span class="text-red-600 font-extrabold">${sub.tablet}</span>`;
+
+        document.getElementById('modal-pen-status').innerHTML = !status.lostPen && !status.brokenPen
+          ? `<span class="text-emerald-600 font-bold">${sub.pen || '정상'}</span>` 
+          : `<span class="text-red-600 font-extrabold">${sub.pen}</span>`;
+
+        const noteText = status.hasNote ? sub.note : '특이사항 없음';
+        document.getElementById('modal-note-box').innerText = noteText;
+        document.getElementById('modal-note-box').className = status.hasNote
+          ? "bg-purple-50/70 p-2.5 rounded-lg border border-purple-200 text-purple-900 font-bold whitespace-pre-wrap min-h-[50px]"
+          : "bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-600 font-medium whitespace-pre-wrap min-h-[50px]";
+
+        document.getElementById('modal-timestamp').innerText = `제출일시: ${sub.timestamp || '-'}`;
+      }
+
+      document.getElementById('detail-modal').classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    function switchGrade(grade) {
+      currentGrade = grade;
+      selectedClass = null;
+      selectedFilters.clear();
+
+      const tabIds = ['tab-grade-all', 'tab-grade-1', 'tab-grade-2', 'tab-grade-3'];
+      tabIds.forEach(id => {
+        const tab = document.getElementById(id);
+        if (!tab) return;
+        const target = (id === 'tab-grade-all') ? 'all' : parseInt(id.replace('tab-grade-', ''));
+        if (target === grade) {
+          tab.className = "grade-tab px-5 py-3 font-bold text-sm text-white border-b-4 border-blue-500 flex items-center gap-1.5 whitespace-nowrap";
+        } else {
+          tab.className = "grade-tab px-5 py-3 font-bold text-sm text-slate-400 hover:text-white border-b-4 border-transparent flex items-center gap-1.5 whitespace-nowrap";
+        }
+      });
+
+      renderDashboard();
+    }
+
+    function downloadExcel() {
+      if (!currentExportList || currentExportList.length === 0) {
+        alert("다운로드할 학생 데이터가 없습니다.");
+        return;
+      }
+
+      const headers = ["학교명", "학번", "학년", "반", "번호", "성명", "기기상태", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
+      const rows = currentExportList.map(stu => {
+        const sub = state.submissions.find(s => 
+          Number(s.grade) === Number(stu.grade) && 
+          Number(s.classNum) === Number(stu.classNum) && 
+          Number(s.num) === Number(stu.num)
+        );
+
+        const status = checkStudentStatus(sub);
+        const studentId = `${stu.grade}${String(stu.classNum).padStart(2, '0')}${String(stu.num).padStart(2, '0')}`;
+
+        if (!status.isSubmitted) {
+          return [activeSchool, studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-"];
+        } else {
+          const statusText = (status.isIssue || status.hasNote) ? "이상/소견보고" : "정상";
+          const safeNote = `"${(sub.note || '-').replace(/"/g, '""')}"`;
+          return [
+            activeSchool,
+            studentId,
+            `${stu.grade}학년`,
+            `${stu.classNum}반`,
+            `${stu.num}번`,
+            stu.name,
+            statusText,
+            sub.tablet,
+            sub.pen,
+            safeNote,
+            sub.timestamp || "-"
+          ];
+        }
+      });
+
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const gradeLabel = (currentGrade === 'all') ? '전체학년' : `${currentGrade}학년`;
+      const classLabel = selectedClass ? `_${selectedClass}반` : '';
+      
+      link.setAttribute("href", url);
+      link.setAttribute("download", `[${activeSchool}]_스마트단말_점검현황_${gradeLabel}${classLabel}_${dateStr}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
+</body>
+</html>
