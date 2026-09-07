@@ -355,16 +355,17 @@
     </main>
   </div>
 
-  <!-- ⭐ [상세 점검 내역 팝업 모달 + 수리완료 버튼 탑재] -->
+  <!-- ⭐ [상세 점검 내역 팝업 모달 + 조치내용 작성/확인 탑재] -->
   <div id="detail-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
-    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-6 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
+    <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
       <div class="flex justify-between items-center border-b pb-3">
         <h4 id="modal-student-title" class="font-extrabold text-slate-800 text-base">10101 홍길동</h4>
         <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
-      <div class="space-y-3 text-xs">
+      
+      <div class="space-y-2.5 text-xs">
         <div class="flex justify-between items-center py-1 border-b border-slate-100">
           <span class="text-slate-500 font-semibold">제출 상태</span>
           <span id="modal-submit-status" class="font-bold">미제출</span>
@@ -378,21 +379,28 @@
           <span id="modal-pen-status" class="font-bold">-</span>
         </div>
         <div class="py-1">
-          <span class="text-slate-500 font-semibold block mb-1">📝 특이사항 및 소견</span>
-          <div id="modal-note-box" class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-700 font-medium whitespace-pre-wrap min-h-[50px]">-</div>
+          <span class="text-slate-500 font-semibold block mb-1">📝 학생 특이사항 소견 (접수 내용)</span>
+          <div id="modal-note-box" class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-slate-700 font-medium whitespace-pre-wrap min-h-[40px]">-</div>
         </div>
+        
+        <!-- ⭐ [수리 및 조치 결과 표시 박스] -->
+        <div id="modal-action-result-box" class="hidden py-1">
+          <span class="text-purple-700 font-bold block mb-1">💜 수리 및 조치 결과 내역</span>
+          <div id="modal-action-result-text" class="bg-purple-50 p-2.5 rounded-xl border border-purple-200 text-purple-900 font-black whitespace-pre-wrap">-</div>
+        </div>
+
         <div class="text-[11px] text-slate-400 text-right" id="modal-timestamp">제출일시: -</div>
       </div>
 
-      <!-- ⭐ [수리완료 액션 버튼 영역] -->
-      <div id="modal-repair-action-box" class="pt-2">
+      <!-- ⭐ [수리완료 입력/수정/취소 액션 박스] -->
+      <div id="modal-repair-action-box" class="pt-2 space-y-2">
       </div>
 
       <button onclick="closeDetailModal()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-xl text-xs transition">확인 및 닫기</button>
     </div>
   </div>
 
-  <!-- ================= [3. JavaScript 통신 & 수리완료 엔진] ================= -->
+  <!-- ================= [3. JavaScript 통신 & 수리조치 기록 엔진] ================= -->
   <script>
     // ⚠️ 구글 웹앱 URL을 꼭 여기에 넣으세요!
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjQ6ERljPsRoe4-Gi7OrEF6gMm0N8REthsmn4v_2oWdOJ3UlxXEEAmhngDYTR2FCSv/exec";
@@ -407,8 +415,8 @@
     let currentExportList = [];
     let currentModalStudent = null;
 
-    // ⭐ [수리완료 영구 보관 세트]
-    let repairedSet = new Set();
+    // ⭐ [수리완료 및 조치내용 영구 보관 객체]
+    let repairMap = {}; 
 
     let state = {
       students: [],
@@ -435,19 +443,19 @@
       }, 3000);
     }
 
-    // 수리완료 상태 저장 및 불러오기 (학교별 분리 저장)
-    function loadRepairedStatus() {
+    // 학교별 수리 조치내역 불러오기/저장하기
+    function loadRepairData() {
       try {
-        const saved = localStorage.getItem('repaired_' + activeSchool);
-        repairedSet = saved ? new Set(JSON.parse(saved)) : new Set();
+        const saved = localStorage.getItem('repair_actions_' + activeSchool);
+        repairMap = saved ? JSON.parse(saved) : {};
       } catch(e) {
-        repairedSet = new Set();
+        repairMap = {};
       }
     }
 
-    function saveRepairedStatus() {
+    function saveRepairData() {
       try {
-        localStorage.setItem('repaired_' + activeSchool, JSON.stringify(Array.from(repairedSet)));
+        localStorage.setItem('repair_actions_' + activeSchool, JSON.stringify(repairMap));
       } catch(e){}
     }
 
@@ -460,7 +468,7 @@
 
       if (!isStudent) {
         await initSchoolsList();
-        loadRepairedStatus();
+        loadRepairData();
         fetchData();
       } else {
         fetchData();
@@ -487,7 +495,7 @@
           const selectEl = document.getElementById('select-active-school');
           selectEl.innerHTML = data.schools.map(sch => `<option value="${sch}">${sch}</option>`).join('');
           activeSchool = data.schools[0];
-          loadRepairedStatus();
+          loadRepairData();
           syncGradeClassSelection();
         }
       } catch(e) {
@@ -499,7 +507,7 @@
       activeSchool = document.getElementById('select-active-school').value;
       selectedClass = null;
       selectedFilters.clear();
-      loadRepairedStatus();
+      loadRepairData();
       syncGradeClassSelection();
       fetchData();
       showToast(`🏫 [${activeSchool}] 데이터로 전환되었습니다.`);
@@ -554,8 +562,8 @@
       try {
         await fetch(`${GAS_API_URL}?action=reset&school=${encodeURIComponent(activeSchool)}`);
         state.submissions = [];
-        repairedSet.clear();
-        saveRepairedStatus();
+        repairMap = {};
+        saveRepairData();
         renderDashboard();
         fetchData();
         showToast(`✅ [${activeSchool}] 점검이 초기화되었습니다.`);
@@ -753,7 +761,7 @@
 
       targetStudents.forEach(stu => {
         const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
-        const isRepaired = repairedSet.has(stuKey);
+        const isRepaired = !!repairMap[stuKey];
 
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
@@ -764,7 +772,6 @@
         const status = checkStudentStatus(sub);
         if (status.isSubmitted) {
           submittedCount++;
-          // 수리완료가 안 된 미해결 건수만 집계
           if (!isRepaired) {
             if (status.lostTablet) lostPad++;
             if (status.lostPen) lostPen++;
@@ -864,7 +871,7 @@
       });
     }
 
-    // ⭐ [차트 2: 학생 타일 모니터링 - 수리완료 시 필터 자동 제외 및 보라색 표시]
+    // ⭐ [차트 2: 학생 타일 모니터링 - 수리/조치 내용 3번째 줄 표시]
     function renderStudentTiles(targetStudents) {
       const grid = document.getElementById('student-tiles-grid');
       grid.innerHTML = '';
@@ -874,7 +881,7 @@
 
       list = list.filter(stu => {
         const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
-        const isRepaired = repairedSet.has(stuKey);
+        const isRepaired = !!repairMap[stuKey];
 
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
@@ -886,7 +893,6 @@
 
         const status = checkStudentStatus(sub);
 
-        // ⭐ 수리완료된 학생은 분실, 파손, 특이소견 필터에서 자동 제외!
         if (isRepaired && (selectedFilters.has('lost') || selectedFilters.has('broken') || selectedFilters.has('note'))) {
           return false;
         }
@@ -926,7 +932,8 @@
 
       list.forEach((stu, idx) => {
         const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
-        const isRepaired = repairedSet.has(stuKey);
+        const repairInfo = repairMap[stuKey];
+        const isRepaired = !!repairInfo;
 
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
@@ -939,39 +946,36 @@
         const firstLine = `${studentId} ${stu.name}`;
 
         let secondLineHtml = '';
+        let thirdLineNoteHtml = '';
         let cardStyle = '';
 
         if (!status.isSubmitted) {
           secondLineHtml = `<span class="text-blue-600 font-bold text-[11px]">미제출</span>`;
           cardStyle = `border-2 border-blue-500 bg-blue-50/40 hover:bg-blue-100/50`;
         } else if (isRepaired) {
-          // 🟣 수리완료: 보라색 테두리
+          // 🟣 수리완료: 보라색 테두리 + 조치 내용 출력
           secondLineHtml = `<span class="text-purple-700 font-black text-[11px] flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> 수리완료</span>`;
-          cardStyle = `border-2 border-purple-500 bg-purple-50/50 ring-1 ring-purple-300 hover:bg-purple-100/60`;
+          thirdLineNoteHtml = `<div class="text-[10px] font-bold truncate bg-purple-100/90 text-purple-900 px-1.5 py-0.5 rounded border border-purple-300 mt-1" title="조치: ${repairInfo.action}">🛠️ ${repairInfo.action}</div>`;
+          cardStyle = `border-2 border-purple-500 bg-purple-50/60 ring-1 ring-purple-300 hover:bg-purple-100/60`;
         } else {
           if (status.isIssue || status.hasNote) {
-            // 🔴 이상보고 / 미수리: 빨간 테두리
             let issueText = status.issues.join(', ');
             if (!issueText && status.hasNote) issueText = '특이사항 기재';
 
             secondLineHtml = `<span class="text-red-600 font-bold text-[11px] truncate block" title="${issueText}">${issueText}</span>`;
+            if (status.hasNote) {
+              thirdLineNoteHtml = `<div class="text-[10px] font-bold truncate bg-red-100/80 text-red-900 px-1.5 py-0.5 rounded border border-red-200 mt-1" title="소견: ${sub.note}">📝 ${sub.note}</div>`;
+            }
             cardStyle = `border-2 border-red-500 bg-red-50/50 ring-1 ring-red-300 hover:bg-red-100/60`;
           } else {
-            // 🟢 정상: 기본 테두리
             secondLineHtml = `<span class="text-emerald-600 font-bold text-[11px]">정상</span>`;
             cardStyle = `border-2 border-slate-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/30`;
           }
         }
 
-        let thirdLineNoteHtml = '';
-        if (status.hasNote) {
-          const strikeClass = isRepaired ? 'line-through text-slate-400' : 'text-purple-900';
-          thirdLineNoteHtml = `<div class="text-[10px] font-bold truncate bg-purple-100/80 px-1.5 py-0.5 rounded border border-purple-200 mt-1 ${strikeClass}" title="소견: ${sub.note}">📝 ${sub.note}</div>`;
-        }
-
         const tile = document.createElement('div');
         tile.className = `p-2.5 rounded-xl cursor-pointer shadow-sm transition-all duration-150 flex flex-col justify-between min-h-[82px] ${cardStyle}`;
-        tile.onclick = () => openDetailModal(stu, sub, studentId, stuKey, isRepaired);
+        tile.onclick = () => openDetailModal(stu, sub, studentId, stuKey, isRepaired, repairInfo);
 
         tile.innerHTML = `
           <div>
@@ -984,12 +988,17 @@
       });
     }
 
-    // ⭐ [상세 팝업 모달 + 수리완료 토글 버튼]
-    function openDetailModal(stu, sub, studentId, stuKey, isRepaired) {
-      currentModalStudent = { stu, sub, studentId, stuKey, isRepaired };
+    // ⭐ [상세 팝업 모달: 증상 + 소견 + 수리조치 작성/확인]
+    function openDetailModal(stu, sub, studentId, stuKey, isRepaired, repairInfo) {
+      currentModalStudent = { stu, sub, studentId, stuKey, isRepaired, repairInfo };
 
       document.getElementById('modal-student-title').innerText = `${studentId} ${stu.name} (${activeSchool} ${stu.grade}학년 ${stu.classNum}반 ${stu.num}번)`;
+      
+      const actionResultBox = document.getElementById('modal-action-result-box');
+      const actionResultText = document.getElementById('modal-action-result-text');
       const repairActionBox = document.getElementById('modal-repair-action-box');
+      
+      actionResultBox.classList.add('hidden');
       repairActionBox.innerHTML = '';
 
       if (!sub) {
@@ -997,7 +1006,7 @@
         document.getElementById('modal-tablet-status').innerText = '-';
         document.getElementById('modal-pen-status').innerText = '-';
         document.getElementById('modal-note-box').innerText = '아직 점검 결과가 제출되지 않았습니다.';
-        document.getElementById('modal-note-box').className = "bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-400 font-medium whitespace-pre-wrap min-h-[50px]";
+        document.getElementById('modal-note-box').className = "bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-slate-400 font-medium whitespace-pre-wrap min-h-[40px]";
         document.getElementById('modal-timestamp').innerText = '제출일시: 미제출';
       } else {
         const status = checkStudentStatus(sub);
@@ -1023,21 +1032,36 @@
         const noteText = status.hasNote ? sub.note : '특이사항 없음';
         document.getElementById('modal-note-box').innerText = noteText;
         document.getElementById('modal-note-box').className = status.hasNote
-          ? "bg-purple-50/70 p-2.5 rounded-lg border border-purple-200 text-purple-900 font-bold whitespace-pre-wrap min-h-[50px]"
-          : "bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-600 font-medium whitespace-pre-wrap min-h-[50px]";
+          ? "bg-red-50 p-2.5 rounded-xl border border-red-200 text-red-900 font-bold whitespace-pre-wrap min-h-[40px]"
+          : "bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium whitespace-pre-wrap min-h-[40px]";
 
         document.getElementById('modal-timestamp').innerText = `제출일시: ${sub.timestamp || '-'}`;
 
-        // ⭐ 이상보고 또는 소견이 있는 학생일 경우 수리완료 버튼 표시!
+        // ⭐ 수리 완료된 경우 처리 결과 표시
+        if (isRepaired && repairInfo) {
+          actionResultBox.classList.remove('hidden');
+          actionResultText.innerHTML = `<div>${repairInfo.action}</div><div class="text-[10px] text-purple-600 font-normal mt-1">처리일시: ${repairInfo.date}</div>`;
+        }
+
+        // ⭐ 수리/조치 액션 박스 UI
         if (status.isIssue || status.hasNote || isRepaired) {
-          const btnHtml = isRepaired
-            ? `<button onclick="toggleModalRepair()" class="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition">
-                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 수리완료 취소 (다시 이상보고로 복구)
-               </button>`
-            : `<button onclick="toggleModalRepair()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition">
-                <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 🔧 이 기기 [수리/처리 완료]로 변경
-               </button>`;
-          repairActionBox.innerHTML = btnHtml;
+          if (isRepaired) {
+            repairActionBox.innerHTML = `
+              <button onclick="cancelModalRepair()" class="w-full bg-slate-600 hover:bg-slate-700 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition">
+                <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> 수리완료 취소 (다시 미수리 상태로 복구)
+              </button>
+            `;
+          } else {
+            repairActionBox.innerHTML = `
+              <div class="space-y-1.5 bg-purple-50/60 p-3 rounded-2xl border border-purple-200">
+                <label class="block text-xs font-black text-purple-900">🔧 수리 및 조치 내용 작성</label>
+                <input type="text" id="modal-repair-input" placeholder="예: S펜 교체 완료, 액정 수리 접수 등" class="w-full border border-purple-300 rounded-xl px-3 py-2 text-xs font-bold focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                <button onclick="confirmModalRepair()" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-md transition mt-1">
+                  <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> 수리 완료 및 조치 내용 저장
+                </button>
+              </div>
+            `;
+          }
         }
       }
 
@@ -1045,19 +1069,38 @@
       lucide.createIcons();
     }
 
-    function toggleModalRepair() {
+    // ⭐ 수리 조치 내용 저장
+    function confirmModalRepair() {
       if (!currentModalStudent) return;
-      const { stuKey, isRepaired } = currentModalStudent;
+      const { stuKey } = currentModalStudent;
+      const inputEl = document.getElementById('modal-repair-input');
+      const actionText = inputEl ? inputEl.value.trim() : '';
 
-      if (isRepaired) {
-        repairedSet.delete(stuKey);
-        showToast("↩️ 수리완료가 취소되었습니다. (이상보고로 복구)");
-      } else {
-        repairedSet.add(stuKey);
-        showToast("💜 수리완료 처리되었습니다! (분실/파손 필터에서 제외)");
+      if (!actionText) {
+        showToast("수리 및 조치 내용을 입력해주세요.", 'error');
+        if (inputEl) inputEl.focus();
+        return;
       }
-      
-      saveRepairedStatus();
+
+      const nowStr = new Date().toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      repairMap[stuKey] = {
+        action: actionText,
+        date: nowStr
+      };
+
+      saveRepairData();
+      showToast(`💜 [${actionText}] 수리 완료 처리가 저장되었습니다.`);
+      closeDetailModal();
+      renderDashboard();
+    }
+
+    // 수리 취소
+    function cancelModalRepair() {
+      if (!currentModalStudent) return;
+      const { stuKey } = currentModalStudent;
+      delete repairMap[stuKey];
+      saveRepairData();
+      showToast("↩️ 수리완료가 취소되었습니다. (이상보고로 복구)");
       closeDetailModal();
       renderDashboard();
     }
@@ -1093,10 +1136,11 @@
         return;
       }
 
-      const headers = ["학교명", "학번", "학년", "반", "번호", "성명", "기기상태", "수리여부", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
+      const headers = ["학교명", "학번", "학년", "반", "번호", "성명", "기기상태", "수리여부", "수리조치내역", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
       const rows = currentExportList.map(stu => {
         const stuKey = `${stu.grade}_${stu.classNum}_${stu.num}`;
-        const isRepaired = repairedSet.has(stuKey);
+        const repairInfo = repairMap[stuKey];
+        const isRepaired = !!repairInfo;
 
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
@@ -1108,10 +1152,11 @@
         const studentId = `${stu.grade}${String(stu.classNum).padStart(2, '0')}${String(stu.num).padStart(2, '0')}`;
 
         if (!status.isSubmitted) {
-          return [activeSchool, studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-", "-"];
+          return [activeSchool, studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-", "-", "-"];
         } else {
           const statusText = (status.isIssue || status.hasNote) ? "이상/소견보고" : "정상";
           const repairText = isRepaired ? "수리완료" : (status.isIssue ? "미수리" : "해당없음");
+          const repairActionText = isRepaired ? `"${repairInfo.action.replace(/"/g, '""')}"` : "-";
           const safeNote = `"${(sub.note || '-').replace(/"/g, '""')}"`;
           return [
             activeSchool,
@@ -1122,6 +1167,7 @@
             stu.name,
             statusText,
             repairText,
+            repairActionText,
             sub.tablet,
             sub.pen,
             safeNote,
