@@ -3,13 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>스마트 단말기 관리 시스템</title>
+  <title>스마트 단말기 자가점검</title>
   <!-- Tailwind CSS & Lucide Icons & Confetti -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
   
-  <!-- 0.00초 화면 격리 -->
   <script>
     (function() {
       const params = new URLSearchParams(window.location.search);
@@ -33,10 +32,9 @@
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 relative">
 
-  <!-- 토스트 팝업 -->
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
-  <!-- ================= [0. 교사용 비밀번호 잠금 로그인 화면] ================= -->
+  <!-- [0. 관리자 로그인] -->
   <div id="admin-auth-screen" class="hidden min-h-screen flex items-center justify-center p-4 bg-slate-900">
     <div class="w-full max-w-sm bg-white p-8 rounded-3xl shadow-2xl border border-slate-700 text-center space-y-5 animate-in fade-in zoom-in-95">
       <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner">
@@ -56,7 +54,7 @@
     </div>
   </div>
 
-  <!-- ================= [1. 학생 전용 모드 화면 (?mode=student)] ================= -->
+  <!-- [1. 학생 전용 모드] -->
   <div id="student-view-container" class="min-h-screen items-center justify-center p-4">
     <div class="w-full max-w-md bg-white p-6 sm:p-8 rounded-3xl border-2 border-slate-200 shadow-2xl space-y-5">
       
@@ -136,16 +134,22 @@
     </div>
   </div>
 
-  <!-- ================= [2. 관리자 전체 대시보드 화면 (로그인 후 노출)] ================= -->
+  <!-- [2. 관리자 대시보드] -->
   <div id="admin-view-container" class="hidden">
     <header class="bg-[#0F172A] text-white px-6 py-4 shadow-md">
       <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-4">
         <div>
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span class="text-2xl">🏫</span>
-            <h1 class="text-xl font-bold tracking-tight">스마트 에듀테크 관리 시스템</h1>
+            <h1 class="text-lg sm:text-xl font-bold tracking-tight">스마트 에듀테크 관리 시스템</h1>
             
+            <!-- 학교 선택 드롭다운 -->
             <select id="select-active-school" onchange="handleSchoolSwitch()" class="bg-slate-800 border-2 border-emerald-400 text-emerald-300 text-xs font-black px-3 py-1.5 rounded-xl focus:outline-none cursor-pointer">
+            </select>
+
+            <!-- ⭐ [신규: 점검 회차/날짜 시트 선택 드롭다운] -->
+            <select id="select-active-sheet" onchange="handleSheetSwitch()" class="bg-slate-800 border-2 border-sky-400 text-sky-300 text-xs font-black px-3 py-1.5 rounded-xl focus:outline-none cursor-pointer">
+              <option value="">점검 회차 로딩 중...</option>
             </select>
           </div>
           <p class="text-xs text-slate-400 mt-1 flex items-center gap-2">
@@ -153,20 +157,16 @@
             <span class="inline-flex items-center text-emerald-400 gap-1 font-semibold">
               <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> 구글 클라우드 DB 연동 중
             </span>
-            <span id="active-sheet-badge" class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[11px] border border-slate-700">
-              시트: 로딩 중...
-            </span>
           </p>
         </div>
 
         <div class="flex items-center gap-2 flex-wrap">
           <button onclick="fetchData(true)" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 데이터 새로고침
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 새로고침
           </button>
           <button onclick="resetInspection()" class="flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
-            <i data-lucide="calendar-x-2" class="w-3.5 h-3.5"></i> 점검 초기화 (새 시트)
+            <i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i> 새 점검 회차 시작
           </button>
-          <!-- ⭐ 로그아웃 버튼 -->
           <button onclick="handleAdminLogout()" class="flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition shadow">
             <i data-lucide="log-out" class="w-3.5 h-3.5"></i> 로그아웃
           </button>
@@ -374,7 +374,7 @@
     </main>
   </div>
 
-  <!-- 상세 팝업 모달 -->
+  <!-- 상세 점검 내역 팝업 모달 -->
   <div id="detail-modal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
     <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 space-y-4 border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
       <div class="flex justify-between items-center border-b pb-3">
@@ -446,15 +446,16 @@
     </div>
   </div>
 
-  <!-- ================= [3. JavaScript 보안 및 데이터 엔진] ================= -->
+  <!-- ================= [3. JavaScript 통신 및 회차 선택 엔진] ================= -->
   <script>
-    // ⚠️ 1. 교사용 관리자 비밀번호 (원하는 비밀번호로 변경하세요!)
-    const TEACHER_PASSWORD = "080513";
+    // ⚠️ 1. 교사용 관리자 비밀번호
+    const TEACHER_PASSWORD = "1234";
 
     // ⚠️ 2. 구글 웹앱 URL
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyjQ6ERljPsRoe4-Gi7OrEF6gMm0N8REthsmn4v_2oWdOJ3UlxXEEAmhngDYTR2FCSv/exec";
 
     let activeSchool = "A초등학교";
+    let selectedSheetName = null; // ⭐ 사용자가 선택한 특정 점검 회차 시트명
     let currentGrade = 1;
     let selectedClass = null;
     let selectedFilters = new Set();
@@ -467,7 +468,8 @@
     let state = {
       students: [],
       submissions: [],
-      activeSheetName: "점검기록_진행중"
+      activeSheetName: "점검기록_진행중",
+      availableSheets: []
     };
 
     function showToast(message, type = 'success') {
@@ -489,7 +491,6 @@
       }, 3000);
     }
 
-    // ⭐ [관리자 로그인 검증]
     function handleAdminLogin(e) {
       e.preventDefault();
       const inputPass = document.getElementById('admin-password-input').value;
@@ -507,7 +508,6 @@
       }
     }
 
-    // ⭐ [관리자 로그아웃]
     function handleAdminLogout() {
       sessionStorage.removeItem('is_teacher_logged');
       document.getElementById('admin-view-container').classList.add('hidden');
@@ -524,7 +524,6 @@
       const isStudent = (urlParams.get('mode') === 'student');
 
       if (!isStudent) {
-        // 교사 접속 시 비밀번호 로그인 체크
         const isLogged = (sessionStorage.getItem('is_teacher_logged') === 'true');
         if (isLogged) {
           document.getElementById('admin-auth-screen').classList.add('hidden');
@@ -560,6 +559,7 @@
           const selectEl = document.getElementById('select-active-school');
           selectEl.innerHTML = data.schools.map(sch => `<option value="${sch}">${sch}</option>`).join('');
           activeSchool = data.schools[0];
+          selectedSheetName = null; // 학교 변경 시 최신 시트로 리셋
           syncGradeClassSelection();
         }
       } catch(e) {
@@ -571,9 +571,19 @@
       activeSchool = document.getElementById('select-active-school').value;
       selectedClass = null;
       selectedFilters.clear();
+      selectedSheetName = null; // 학교 변경 시 최신 시트 자동 선택
       syncGradeClassSelection();
       fetchData();
       showToast(`🏫 [${activeSchool}] 데이터로 전환되었습니다.`);
+    }
+
+    // ⭐ [점검 회차/날짜 시트 전환 함수]
+    function handleSheetSwitch() {
+      selectedSheetName = document.getElementById('select-active-sheet').value;
+      selectedClass = null;
+      selectedFilters.clear();
+      fetchData();
+      showToast(`📅 [${selectedSheetName}] 회차 점검 기록으로 전환되었습니다.`);
     }
 
     function syncGradeClassSelection() {
@@ -595,25 +605,39 @@
       showToast(`📋 [${activeSchool}] 학생용 QR 링크가 복사되었습니다!`);
     }
 
+    // 데이터 조회 (선택된 회차 시트 데이터 로드)
     async function fetchData(isManual = false) {
       if (!GAS_API_URL || GAS_API_URL.includes("여기에_")) return;
 
       const urlParams = new URLSearchParams(window.location.search);
       const targetSch = urlParams.get('school') || activeSchool;
 
+      let apiUrl = `${GAS_API_URL}?action=getData&school=${encodeURIComponent(targetSch)}`;
+      if (selectedSheetName) {
+        apiUrl += `&sheetName=${encodeURIComponent(selectedSheetName)}`;
+      }
+
       try {
-        const res = await fetch(`${GAS_API_URL}?action=getData&school=${encodeURIComponent(targetSch)}`);
+        const res = await fetch(apiUrl);
         const data = await res.json();
         if (data && data.students) {
           state = data;
-          const badge = document.getElementById('active-sheet-badge');
-          if (badge && data.activeSheetName) {
-            badge.innerText = `시트: ${data.activeSheetName}`;
+
+          // ⭐ 회차 선택 드롭다운 목록 갱신
+          if (data.availableSheets && data.availableSheets.length > 0) {
+            const sheetSelect = document.getElementById('select-active-sheet');
+            if (sheetSelect) {
+              sheetSelect.innerHTML = data.availableSheets.map(s => 
+                `<option value="${s}" ${s === data.activeSheetName ? 'selected' : ''}>📅 회차: ${s}</option>`
+              ).join('');
+              selectedSheetName = data.activeSheetName;
+            }
           }
+
           if (urlParams.get('mode') !== 'student') {
             renderDashboard();
           }
-          if (isManual) showToast(`🔄 [${targetSch}] 데이터가 새로고침되었습니다.`);
+          if (isManual) showToast(`🔄 [${targetSch} - ${data.activeSheetName}] 데이터가 새로고침되었습니다.`);
         }
       } catch (err) {
         console.error("데이터 로드 실패:", err);
@@ -621,13 +645,14 @@
     }
 
     async function resetInspection() {
-      if (!confirm(`정말 [${activeSchool}] 이번 회차 점검을 초기화하시겠습니까?\n기존 기록은 해당 학교 파일에 안전하게 보존되고 새 날짜 시트가 생성됩니다.`)) return;
+      if (!confirm(`정말 [${activeSchool}] 새로운 점검 회차를 시작하시겠습니까?\n기존 기록은 이전 날짜 시트에 안전하게 보존되고 새 회차 시트가 생성됩니다.`)) return;
       try {
         await fetch(`${GAS_API_URL}?action=reset&school=${encodeURIComponent(activeSchool)}`);
         state.submissions = [];
+        selectedSheetName = null; // 새로 생성된 최신 시트로 이동
         renderDashboard();
         fetchData();
-        showToast(`✅ [${activeSchool}] 점검이 초기화되었습니다.`);
+        showToast(`✅ [${activeSchool}] 새 점검 회차가 시작되었습니다.`);
       } catch(err) {
         console.error("초기화 실패:", err);
       }
@@ -743,7 +768,17 @@
         return;
       }
 
-      const payload = { school: activeSchool, grade: adminBoundGrade, classNum: adminBoundClass, num: inputNum, name: inputName, tablet, pen, note };
+      const payload = { 
+        school: activeSchool, 
+        targetSheet: selectedSheetName, // 현재 보고 있는 회차 시트에 저장
+        grade: adminBoundGrade, 
+        classNum: adminBoundClass, 
+        num: inputNum, 
+        name: inputName, 
+        tablet, 
+        pen, 
+        note 
+      };
       const btn = document.getElementById('admin-btn-submit');
       btn.innerText = "제출 중...";
       btn.disabled = true;
@@ -1110,6 +1145,7 @@
       lucide.createIcons();
     }
 
+    // ⭐ 수리 조치사항 구글 시트에 실시간 저장 (선택된 회차 시트에 직접 기록)
     async function confirmModalRepair() {
       if (!currentModalStudent) return;
       const { stu } = currentModalStudent;
@@ -1130,6 +1166,7 @@
           body: JSON.stringify({
             actionType: "updateRepair",
             school: activeSchool,
+            targetSheet: selectedSheetName,
             grade: stu.grade,
             classNum: stu.classNum,
             num: stu.num,
@@ -1139,7 +1176,7 @@
 
         const result = await res.json();
         if (result.status === "success") {
-          showToast(`💜 [${actionText}] 구글 시트에 영구 저장되었습니다!`);
+          showToast(`💜 [${actionText}] 수리 조치가 저장되었습니다!`);
           closeDetailModal();
           fetchData();
         } else {
@@ -1150,6 +1187,7 @@
       }
     }
 
+    // 수리 취소
     async function cancelModalRepair() {
       if (!currentModalStudent) return;
       const { stu } = currentModalStudent;
@@ -1162,6 +1200,7 @@
           body: JSON.stringify({
             actionType: "updateRepair",
             school: activeSchool,
+            targetSheet: selectedSheetName,
             grade: stu.grade,
             classNum: stu.classNum,
             num: stu.num,
@@ -1208,7 +1247,7 @@
         return;
       }
 
-      const headers = ["학교명", "학번", "학년", "반", "번호", "성명", "기기상태", "수리여부", "수리조치내역", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
+      const headers = ["학교명", "점검회차", "학번", "학년", "반", "번호", "성명", "기기상태", "수리여부", "수리조치내역", "태블릿상태", "S펜상태", "세부진단소견", "제출시간"];
       const rows = currentExportList.map(stu => {
         const sub = state.submissions.find(s => 
           Number(s.grade) === Number(stu.grade) && 
@@ -1220,7 +1259,7 @@
         const studentId = `${stu.grade}${String(stu.classNum).padStart(2, '0')}${String(stu.num).padStart(2, '0')}`;
 
         if (!status.isSubmitted) {
-          return [activeSchool, studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-", "-", "-"];
+          return [activeSchool, selectedSheetName || "-", studentId, `${stu.grade}학년`, `${stu.classNum}반`, `${stu.num}번`, stu.name, "미제출", "-", "-", "-", "-", "-", "-"];
         } else {
           const statusText = (status.isIssue || status.hasNote) ? "이상/소견보고" : "정상";
           const repairText = status.isRepaired ? "수리완료" : (status.isIssue ? "미수리" : "해당없음");
@@ -1228,6 +1267,7 @@
           const safeNote = `"${(sub.note || '-').replace(/"/g, '""')}"`;
           return [
             activeSchool,
+            selectedSheetName || "-",
             studentId,
             `${stu.grade}학년`,
             `${stu.classNum}반`,
@@ -1249,12 +1289,12 @@
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
 
-      const dateStr = new Date().toISOString().slice(0, 10);
+      const dateStr = selectedSheetName || new Date().toISOString().slice(0, 10);
       const gradeLabel = (currentGrade === 'all') ? '전체학년' : `${currentGrade}학년`;
       const classLabel = selectedClass ? `_${selectedClass}반` : '';
       
       link.setAttribute("href", url);
-      link.setAttribute("download", `[${activeSchool}]_스마트단말_점검현황_${gradeLabel}${classLabel}_${dateStr}.csv`);
+      link.setAttribute("download", `[${activeSchool}]_스마트단말_점검현황_${dateStr}_${gradeLabel}${classLabel}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
